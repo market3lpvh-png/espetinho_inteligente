@@ -1,0 +1,15 @@
+{
+  "name": "atendente-espetinho",
+  "version": "0.1.0",
+  "description": "Atendente automatico replicavel para espetinho/lanche (nucleo: cerebro + servidor)",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
