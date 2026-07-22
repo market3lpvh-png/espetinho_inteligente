@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atendente — teste</title>
+<style>
+  :root{
+    --carvao:#15110d; --carvao2:#1f1813; --brasa:#e8722a; --brasa-claro:#ffb061;
+    --ouro:#f4c24a; --creme:#f3ead7; --cinza:#9a8f80; --linha:#2e251d; --verde-zap:#1f6f4d;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;padding:16px 10px 40px;background:#0d0a07;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--creme);
+    display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;justify-content:center;
+  }
+  .phone{
+    width:100%;max-width:420px;background:var(--carvao);border:1px solid var(--linha);
+    border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.45);
+    display:flex;flex-direction:column;height:640px;
+  }
+  .topbar{background:linear-gradient(180deg,#241a13,#1a130d);padding:13px 15px;
+    display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--linha)}
+  .avatar{width:40px;height:40px;border-radius:50%;flex:0 0 auto;font-size:21px;
+    background:radial-gradient(circle at 30% 25%,var(--brasa-claro),var(--brasa) 55%,#a8420f);
+    display:flex;align-items:center;justify-content:center}
+  .nome{font-weight:700;font-size:15px;line-height:1.2}
+  .nome small{display:block;font-weight:400;color:var(--brasa-claro);font-size:11px}
+  .btn-reset{margin-left:auto;background:transparent;border:1px solid var(--linha);
+    color:var(--cinza);font-size:11px;padding:6px 10px;border-radius:7px;cursor:pointer}
+  .btn-reset:hover{color:var(--creme);border-color:var(--brasa)}
+
+  .chat{flex:1;overflow-y:auto;padding:15px 13px;display:flex;flex-direction:column;gap:9px;
+    background:radial-gradient(circle at 12% 8%,rgba(232,114,42,.07),transparent 40%),var(--carvao2)}
+  .msg{max-width:82%;padding:9px 12px;border-radius:14px;font-size:14px;line-height:1.42;
+    white-space:pre-wrap;word-wrap:break-word;animation:pop .18s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .msg.bot{align-self:flex-start;background:#2c2219;border:1px solid var(--linha);border-bottom-left-radius:4px}
+  .msg.user{align-self:flex-end;background:var(--verde-zap);color:#eafff4;border-bottom-right-radius:4px}
+  .msg.sys{align-self:center;background:transparent;color:var(--cinza);font-size:11px;
+    text-align:center;max-width:95%;font-style:italic}
+  .msg.erro{align-self:center;background:#3a1c14;border:1px solid #7a3a22;color:#ffb9a0;
+    font-size:12px;max-width:95%}
+  .typing{align-self:flex-start;display:flex;gap:4px;padding:11px 14px;background:#2c2219;
+    border:1px solid var(--linha);border-radius:14px;border-bottom-left-radius:4px}
+  .typing span{width:7px;height:7px;border-radius:50%;background:var(--brasa-claro);animation:blink 1.2s infinite}
+  .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+  .composer{display:flex;gap:8px;padding:11px;background:#1a130d;border-top:1px solid var(--linha)}
+  .composer input{flex:1;background:#2c2219;border:1px solid var(--linha);border-radius:20px;
+    padding:11px 14px;color:var(--creme);font-size:15px;outline:none}
+  .composer input::placeholder{color:#6f6557}
+  .composer input:focus{border-color:var(--brasa)}
+  .send{background:var(--brasa);border:none;color:#1a130d;font-weight:800;width:46px;height:46px;
+    border-radius:50%;cursor:pointer;font-size:18px;flex:0 0 auto;transition:transform .1s,background .15s}
+  .send:hover{background:var(--brasa-claro)}
+  .send:active{transform:scale(.92)}
+  .send:disabled{opacity:.4;cursor:not-allowed}
+
+  .cupom-area{width:100%;max-width:330px;display:flex;flex-direction:column;gap:11px;align-items:center}
+  .cupom-titulo{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--brasa-claro)}
+  .cupom{width:100%;background:var(--creme);color:#1a1a1a;
+    font-family:ui-monospace,Menlo,Consolas,"Courier New",monospace;font-size:13px;line-height:1.5;
+    padding:20px 18px;border-radius:3px;box-shadow:0 12px 30px rgba(0,0,0,.4);white-space:pre-wrap;
+    -webkit-mask:radial-gradient(circle at 6px,transparent 5px,#000 5.5px) -6px -6px/12px 12px;
+    mask:radial-gradient(circle at 6px,transparent 5px,#000 5.5px) -6px -6px/12px 12px}
+  .cupom .vazio{color:#888;font-style:italic;text-align:center;font-family:inherit;font-size:13px}
+  .btn-print{background:transparent;border:1px solid var(--brasa);color:var(--brasa-claro);
+    padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+  .btn-print:hover{background:rgba(232,114,42,.12)}
+  .btn-print:disabled{opacity:.35;cursor:not-allowed;border-color:var(--cinza);color:var(--cinza)}
+  .nota{font-size:11px;color:var(--cinza);text-align:center;line-height:1.5;max-width:330px}
+  .pendente{color:var(--ouro)}
+
+  @media print{
+    body *{visibility:hidden}
+    #cupom,#cupom *{visibility:visible}
+    #cupom{position:fixed;inset:0;width:80mm;box-shadow:none;-webkit-mask:none;mask:none;border-radius:0}
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="topbar">
+    <div class="avatar">🔥</div>
+    <div class="nome">Churrasquinho do Paraná<small>● online agora</small></div>
+    <button class="btn-reset" id="reset" title="Começar uma conversa nova">novo</button>
+  </div>
+  <div class="chat" id="chat"></div>
+  <div class="composer">
+    <input id="input" type="text" placeholder="Digite seu pedido..." autocomplete="off">
+    <button class="send" id="send" title="Enviar">➤</button>
+  </div>
+</div>
+
+<div class="cupom-area">
+  <div class="cupom-titulo">🖨️ Cupom da cozinha</div>
+  <div class="cupom" id="cupom"><span class="vazio">O cupom aparece aqui quando o pedido for confirmado.</span></div>
+  <button class="btn-print" id="btnPrint" disabled>Imprimir cupom</button>
+  <div class="nota">
+    Página de teste do sistema.<br>
+    <span class="pendente">A confirmar com o dono:</span> taxa de entrega e bairros atendidos.
+  </div>
+</div>
+
+<script>
+const chatEl = document.getElementById('chat');
+const inputEl = document.getElementById('input');
+const sendEl = document.getElementById('send');
+const cupomEl = document.getElementById('cupom');
+const btnPrint = document.getElementById('btnPrint');
+const resetEl = document.getElementById('reset');
+
+// Cada aba do navegador vira um "cliente" diferente, pra uma conversa nao
+// misturar com a outra. O servidor guarda o historico por esse id.
+let clienteId = 'web-' + Math.random().toString(36).slice(2, 9);
+let busy = false;
+
+function bolha(texto, quem){
+  const d = document.createElement('div');
+  d.className = 'msg ' + quem;
+  d.textContent = texto;
+  chatEl.appendChild(d);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+function digitando(mostrar){
+  const antigo = document.getElementById('typing');
+  if(antigo) antigo.remove();
+  if(!mostrar) return;
+  const t = document.createElement('div');
+  t.className = 'typing'; t.id = 'typing';
+  t.innerHTML = '<span></span><span></span><span></span>';
+  chatEl.appendChild(t);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+async function enviar(){
+  const texto = inputEl.value.trim();
+  if(!texto || busy) return;
+  busy = true; sendEl.disabled = true;
+  bolha(texto, 'user');
+  inputEl.value = '';
+  digitando(true);
+  try{
+    const r = await fetch('/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ cliente: clienteId, mensagem: texto })
+    });
+    const dados = await r.json();
+    digitando(false);
+    if(dados.erro){
+      bolha('ERRO DO SERVIDOR: ' + dados.erro, 'erro');
+    } else {
+      if(dados.resposta) bolha(dados.resposta, 'bot');
+      if(dados.cupom){
+        cupomEl.textContent = dados.cupom;
+        btnPrint.disabled = false;
+      }
+    }
+  }catch(e){
+    digitando(false);
+    bolha('Falha de conexao com o servidor: ' + e.message, 'erro');
+  }finally{
+    busy = false; sendEl.disabled = false; inputEl.focus();
+  }
+}
+
+function comecar(){
+  chatEl.innerHTML = '';
+  cupomEl.innerHTML = '<span class="vazio">O cupom aparece aqui quando o pedido for confirmado.</span>';
+  btnPrint.disabled = true;
+  clienteId = 'web-' + Math.random().toString(36).slice(2, 9);
+  bolha('Pagina de teste. Converse como um cliente faria: peca espetinhos, escolha simples ou completo, feche o pedido e veja o cupom.', 'sys');
+  inputEl.focus();
+}
+
+sendEl.addEventListener('click', enviar);
+inputEl.addEventListener('keydown', e => { if(e.key === 'Enter') enviar(); });
+resetEl.addEventListener('click', comecar);
+btnPrint.addEventListener('click', () => window.print());
+comecar();
+</script>
+</body>
+</html>
