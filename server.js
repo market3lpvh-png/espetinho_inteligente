@@ -18,7 +18,11 @@ app.use(express.json());
 // quando for pra valer, a gente troca por algo persistente.
 const conversas = {};
 
-app.get("/", (_req, res) => res.send("Atendente no ar ✅"));
+app.get("/", (_req, res) => res.send("Atendente no ar ✅ — página de teste em /teste.html"));
+
+// Página de teste no navegador (pasta "public"): abra SEU-ENDERECO/teste.html
+// Serve pra você testar sem linha de comando e pra demonstrar pro dono.
+app.use(express.static("public"));
 
 // ---- ENDPOINT DE TESTE ----
 // Teste assim (depois de subir na Railway ou rodando local):
