@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel do Paraná</title>
+<style>
+  :root{
+    --bg:#140f0a; --surface:#1d1710; --surface-2:#271f16; --line:#362b1f;
+    --fg:#f3e9d7; --muted:#a99a84; --ember:#ec7a2c; --ember-soft:#ffb061; --gold:#f4c24a;
+    --ok:#5bbf86; --warn:#e0a53a; --crit:#e0695a; --rain:#5aa9e0;
+    color-scheme: dark;
+    --f-display:"Oswald",Impact,"Arial Narrow",sans-serif;
+    --f-body:"Figtree",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --f-mono:"Spline Sans Mono",ui-monospace,Menlo,Consolas,monospace;
+    --r:14px; --gut:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+  header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#1c140d,#171009);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top,0px) + 12px) var(--gut) 10px}
+  .brandrow{display:flex;align-items:center;gap:10px}
+  .flame{width:34px;height:34px;border-radius:50%;flex:0 0 auto;font-size:18px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 25%,var(--ember-soft),var(--ember) 55%,#a8420f)}
+  .brand h1{font-family:var(--f-display);font-weight:600;font-size:16px;letter-spacing:.4px;margin:0;line-height:1.05;text-transform:uppercase}
+  .brand .sub{font-size:11px;color:var(--muted);letter-spacing:.3px}
+  .daybadge{margin-left:auto;text-align:right}
+  .daybadge .lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .caixapill{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-body);font-weight:700;font-size:14px;line-height:1;margin-top:2px}
+  .caixapill .dot{width:8px;height:8px;border-radius:50%}
+  .caixapill.aberto{color:var(--ok)} .caixapill.aberto .dot{background:var(--ok);box-shadow:0 0 0 3px rgba(91,191,134,.2)}
+  .caixapill.fechado{color:var(--muted)} .caixapill.fechado .dot{background:var(--muted)}
+  .daybadge .date{font-size:11px;color:var(--muted);margin-top:1px}
+  .controls{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .roleseg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+  .roleseg button{background:transparent;border:none;color:var(--muted);font-family:var(--f-body);font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer}
+  .roleseg button[aria-pressed="true"]{background:var(--ember);color:#160f08}
+  .rolelbl{font-size:10px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+  .rainbtn{display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--muted);font-family:var(--f-body);font-size:12px;font-weight:600}
+  .rainbtn .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .rainbtn[aria-pressed="true"]{border-color:var(--rain);color:var(--rain);background:rgba(90,169,224,.12)}
+  .rainbtn[aria-pressed="true"] .dot{background:var(--rain);box-shadow:0 0 0 3px rgba(90,169,224,.25)}
+  .conn{width:100%;font-size:10px;color:var(--muted);line-height:1.35}
+  .conn.erro{color:var(--crit)}
+
+  nav.tabs{display:flex;gap:4px;padding:8px var(--gut) 0;background:var(--bg);position:sticky;top:0;z-index:15;flex-wrap:wrap}
+  nav.tabs button{flex:1;min-width:72px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--f-body);font-size:13px;font-weight:600;padding:9px 2px 10px;cursor:pointer}
+  nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--ember)}
+  main{flex:1;padding:14px var(--gut) 40px}
+  .panel[hidden]{display:none!important}
+  h2.sec{font-family:var(--f-display);font-weight:500;text-transform:uppercase;letter-spacing:1px;font-size:12px;color:var(--muted);margin:18px 2px 10px}
+  h2.sec:first-child{margin-top:2px}
+  .rainflag{display:none;align-items:center;gap:8px;background:rgba(90,169,224,.1);border:1px solid rgba(90,169,224,.3);color:var(--rain);border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:12px}
+  .rainflag.on{display:flex}
+  .vendaok{display:flex;align-items:center;gap:8px;background:rgba(91,191,134,.12);border:1px solid rgba(91,191,134,.4);color:var(--ok);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;margin-bottom:12px;transition:opacity .5s}
+  .carregando{color:var(--muted);text-align:center;padding:30px;font-size:13px}
+
+  .mesagrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .mesa{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 10px;cursor:pointer;text-align:left;color:var(--fg);font-family:var(--f-body);display:flex;flex-direction:column;gap:3px;min-height:74px}
+  .mesa:active{transform:scale(.97)}
+  .mesa .nm{font-family:var(--f-display);font-size:15px;letter-spacing:.5px;text-transform:uppercase}
+  .mesa .st{font-size:11px;color:var(--muted)}
+  .mesa .vv{font-family:var(--f-mono);font-size:13px;margin-top:auto;font-variant-numeric:tabular-nums}
+  .mesa.ocupada{border-color:rgba(91,191,134,.55);background:linear-gradient(180deg,rgba(91,191,134,.08),var(--surface))}
+  .mesa.ocupada .nm,.mesa.ocupada .vv{color:var(--ok)}
+  .mesa.balcao{border-color:rgba(236,122,44,.5);background:linear-gradient(180deg,rgba(236,122,44,.08),var(--surface))}
+  .mesa.balcao .nm{color:var(--ember-soft)}
+  .dethead{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .btnvoltar{background:var(--surface-2);border:1px solid var(--line);color:var(--fg);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer}
+  .dethead h2{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.8px;font-size:17px;margin:0}
+  .comanda{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 4px;margin:10px 0}
+  .comanda .vazia{color:var(--muted);font-size:13px;text-align:center;padding:16px;font-style:italic}
+  .cl{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line)}
+  .cl:last-child{border-bottom:none}
+  .cl .nm{flex:1;font-size:14px;min-width:0} .cl .pr{font-family:var(--f-mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .cl .rm{background:transparent;border:none;color:var(--crit);font-size:17px;cursor:pointer;padding:0 4px;line-height:1}
+  .comtot{display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;border-top:2px solid var(--line)}
+  .comtot .l{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)} .comtot .v{font-family:var(--f-mono);font-size:22px;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+  .pagrow{display:flex;gap:8px;margin-top:10px}
+  .pagbtn{flex:1;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:10px;padding:12px 6px;font-family:var(--f-body);font-weight:700;font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .pagbtn .ic{font-size:16px} .pagbtn:disabled{opacity:.4;cursor:not-allowed}
+  .pagobs{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
+  .item{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;display:flex;align-items:center;gap:10px}
+  .item.esgotado{opacity:.55}
+  .item .nome{font-weight:600;font-size:14px;flex:1;min-width:0}
+  .item .cont{font-family:var(--f-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .item .cont.baixo{color:var(--warn)} .item .cont.esg{color:var(--crit);font-weight:700;font-family:var(--f-body)}
+  .addbtns{display:flex;gap:6px;flex:0 0 auto}
+  .add{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:10px;padding:7px 11px;font-family:var(--f-body);font-weight:700;font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.1;gap:1px}
+  .add .t{font-size:10px;font-weight:600;letter-spacing:.4px;color:var(--muted)} .add .p{font-family:var(--f-mono);font-size:12px}
+  .add:active{transform:scale(.93);background:var(--ember);color:#160f08} .add:active .t{color:#160f08}
+  .add.single{padding:9px 14px} .add:disabled{opacity:.4;cursor:not-allowed}
+  .catgrid{display:flex;flex-direction:column;gap:8px}
+  .prod{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;display:flex;align-items:center;gap:10px}
+  .prod .nome{flex:1;font-weight:600;font-size:14px} .prod .rest{font-family:var(--f-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .stepper button{width:38px;height:36px;background:var(--surface-2);border:none;color:var(--fg);font-size:20px;cursor:pointer}
+  .stepper button:active{background:var(--ember);color:#160f08}
+  .stepper .val{width:46px;text-align:center;font-family:var(--f-mono);font-size:15px;font-variant-numeric:tabular-nums}
+  .fronts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .front{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px}
+  .front .k{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .front .k .tag{width:7px;height:7px;border-radius:50%} .front .tag.pres{background:var(--ember)} .front .tag.zap{background:var(--ok)}
+  .front .v{font-family:var(--f-mono);font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px} .front .foot{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.35}
+  .paygrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .pay{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px;text-align:center}
+  .pay .k{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)} .pay .v{font-family:var(--f-mono);font-size:17px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+  .motocard{background:var(--surface);border:1px solid rgba(90,169,224,.35);border-radius:var(--r);padding:12px 14px;margin-top:10px;display:flex;align-items:center;gap:12px}
+  .motocard .ic{font-size:22px} .motocard .l{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)} .motocard .v{font-family:var(--f-mono);font-size:19px;font-weight:700;color:var(--rain);font-variant-numeric:tabular-nums} .motocard .foot{font-size:11px;color:var(--muted);margin-top:1px}
+  .caixabox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px}
+  .caixabox .tot{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .caixabox .tot .lbl{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)} .caixabox .tot .val{font-family:var(--f-mono);font-size:26px;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+  .caixabox .status{font-size:12px;color:var(--muted);margin-top:8px} .caixabox .status b{color:var(--fg)}
+  .bigbtn{width:100%;margin-top:12px;border:none;border-radius:10px;padding:12px;font-family:var(--f-body);font-weight:700;font-size:14px;cursor:pointer}
+  .bigbtn.abrir{background:var(--ok);color:#09150e} .bigbtn.fechar{background:var(--ember);color:#160f08}
+  .fecharform{margin-top:12px;display:none;gap:8px;flex-direction:column} .fecharform.on{display:flex}
+  .fecharform input{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:11px;color:var(--fg);font-size:14px;outline:none} .fecharform input:focus{border-color:var(--ember)}
+  .tablecard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 12px;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--f-mono)}
+  th:first-child,td:first-child{text-align:left;font-family:var(--f-body)}
+  thead th{font-family:var(--f-body);font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);font-weight:600}
+  tbody tr{border-bottom:1px solid var(--line)} tbody tr:last-child{border-bottom:none}
+  .catrow td{background:var(--surface-2);font-family:var(--f-display);text-transform:uppercase;letter-spacing:.8px;font-size:11px;color:var(--muted);padding:6px 12px}
+  .sobra-ok{color:var(--fg)} .sobra-zero{color:var(--muted)} .sobra-neg{color:var(--crit);font-weight:700} .vend{color:var(--ember-soft)}
+  tfoot td{border-top:2px solid var(--line);font-weight:700;background:var(--surface-2)}
+  .pill{display:inline-block;font-size:10px;font-family:var(--f-body);font-weight:700;letter-spacing:.3px;padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}
+  .pill.alerta{background:rgba(224,105,90,.16);color:var(--crit);border:1px solid rgba(224,105,90,.35)}
+  .ped{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:9px}
+  .ped.saindo{border-color:rgba(90,169,224,.5)} .ped.entregue{opacity:.5}
+  .ped .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ped .id{font-family:var(--f-mono);font-weight:600;font-size:13px} .ped .hr{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-left:auto}
+  .ped .bairro{font-weight:700;font-size:15px} .ped .end{font-size:12px;color:var(--muted);margin-top:1px}
+  .ped .itens{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+  .ped .linha{display:flex;align-items:center;gap:8px;margin-top:9px}
+  .ped .valor{font-family:var(--f-mono);font-weight:600;color:var(--gold);font-variant-numeric:tabular-nums} .ped .pag{font-size:11px;color:var(--muted)}
+  .ped .taxa{display:flex;align-items:center;gap:6px;background:rgba(90,169,224,.1);border:1px solid rgba(90,169,224,.3);border-radius:8px;padding:6px 10px;margin-top:8px;font-size:12px;color:var(--rain)} .ped .taxa b{font-family:var(--f-mono)}
+  .ped .act{margin-left:auto;border:none;border-radius:9px;padding:9px 14px;font-family:var(--f-body);font-weight:700;font-size:13px;cursor:pointer}
+  .ped .act.sair{background:var(--rain);color:#06161f} .ped .act.entregar{background:var(--ok);color:#09150e}
+  .ped .stbadge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .ped .stbadge.preparo{background:var(--surface-2);color:var(--muted)} .ped .stbadge.saindo{background:rgba(90,169,224,.16);color:var(--rain)} .ped .stbadge.entregue{background:rgba(91,191,134,.16);color:var(--ok)}
+  .chartcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 12px 10px}
+  .chart{display:flex;align-items:flex-end;gap:7px;height:150px;padding-top:16px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;min-width:0}
+  .bar .col{width:72%;max-width:30px;background:linear-gradient(180deg,var(--ember),#c05714);border-radius:5px 5px 0 0}
+  .bar.hoje .col{background:linear-gradient(180deg,var(--gold),var(--ember))}
+  .bar .cval{font-family:var(--f-mono);font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums} .bar .cday{font-size:10px;color:var(--muted)} .bar.hoje .cday{color:var(--gold);font-weight:700}
+  .histlist{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+  .histrow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+  .histrow .d{font-weight:600;font-size:13px} .histrow .d small{color:var(--muted);font-weight:400}
+  .histrow .n{margin-left:auto;font-family:var(--f-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .histrow .ff{font-family:var(--f-mono);font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums;min-width:74px;text-align:right}
+  .top3{display:flex;flex-direction:column;gap:6px}
+  .top3 .row{display:flex;align-items:center;gap:10px;font-size:13px}
+  .top3 .rk{font-family:var(--f-display);font-size:14px;color:var(--ember);width:18px}
+  .top3 .bn{flex:1;height:8px;background:var(--surface-2);border-radius:5px;overflow:hidden;min-width:0} .top3 .bn i{display:block;height:100%;background:var(--ember);border-radius:5px}
+  .top3 .qt{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;width:34px;text-align:right}
+  .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:16px;line-height:1.5}
+  .vazio{color:var(--muted);text-align:center;padding:24px;font-style:italic;font-size:13px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:400px){.fronts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brandrow">
+      <div class="flame">🔥</div>
+      <div class="brand"><h1>Churrasquinho do Paraná</h1><div class="sub">Painel do dia</div></div>
+      <div class="daybadge"><div class="lbl">Caixa</div>
+        <div class="caixapill aberto" id="caixaPill"><span class="dot"></span><span id="caixaTxt">—</span></div>
+        <div class="date" id="dataHoje">—</div></div>
+    </div>
+    <div class="controls">
+      <span class="rolelbl">Ver como:</span>
+      <div class="roleseg" id="roleSeg">
+        <button data-role="atendente">Atendente</button>
+        <button data-role="dono" aria-pressed="true">Dono</button>
+        <button data-role="motoboy">Motoboy</button>
+      </div>
+      <button class="rainbtn" id="rainBtn" aria-pressed="false"><span class="dot"></span><span id="rainLbl">Chuva: off</span></button>
+      <div class="conn" id="conn">Conectando ao sistema…</div>
+    </div>
+  </header>
+  <nav class="tabs" role="tablist" id="tabbar"></nav>
+  <main>
+    <section class="panel" id="p-mesas" role="tabpanel">
+      <div class="rainflag" id="rainFlag">☔ Modo chuva ligado — entregas com +R$2 (o atendente do WhatsApp cobra sozinho).</div>
+      <div id="mesasGrid"></div>
+      <div id="mesaDetalhe" hidden></div>
+    </section>
+    <section class="panel" id="p-producao" role="tabpanel" hidden>
+      <h2 class="sec">Quanto você preparou hoje</h2>
+      <div id="producaoConteudo" class="catgrid"></div>
+      <p class="hint">Quando o vendido alcança o preparado, o item fica <b>esgotado</b> e some das vendas (mesas e WhatsApp).</p>
+    </section>
+    <section class="panel" id="p-fechamento" role="tabpanel" hidden>
+      <h2 class="sec">Vendas por frente</h2>
+      <div class="fronts">
+        <div class="front"><div class="k"><span class="tag pres"></span>Presencial (mesas + balcão)</div><div class="v" id="frPresV">R$ 0</div><div class="foot" id="frPresF">0 vendas</div></div>
+        <div class="front"><div class="k"><span class="tag zap"></span>WhatsApp</div><div class="v" id="frZapV">R$ 0</div><div class="foot" id="frZapF">0 pedidos</div></div>
+      </div>
+      <h2 class="sec">Formas de pagamento da noite</h2>
+      <div class="paygrid">
+        <div class="pay"><div class="k">💵 Dinheiro</div><div class="v" id="payDin">R$ 0</div></div>
+        <div class="pay"><div class="k">💳 Cartão</div><div class="v" id="payCar">R$ 0</div></div>
+        <div class="pay"><div class="k">📱 Pix</div><div class="v" id="payPix">R$ 0</div></div>
+      </div>
+      <div class="motocard"><span class="ic">🛵</span>
+        <div style="flex:1;min-width:0"><div class="l">A pagar ao motoboy</div><div class="foot" id="motoFoot">0 entregas</div></div>
+        <div class="v" id="motoVal">R$ 0</div></div>
+      <div class="caixabox">
+        <div class="tot"><span class="lbl">Total do caixa</span><span class="val" id="caixaTotal">R$ 0</span></div>
+        <div class="status" id="caixaStatusLinha"></div>
+        <button class="bigbtn fechar" id="btnFechar">Fechar caixa</button>
+        <div class="fecharform" id="fecharForm">
+          <input id="nomeFecha" type="text" placeholder="Quem está fechando o caixa?" aria-label="Nome de quem fecha o caixa">
+          <button class="bigbtn fechar" id="btnConfirmaFecha">Confirmar fechamento</button>
+        </div>
+      </div>
+      <h2 class="sec">Preparado × Vendido × Sobra</h2>
+      <div class="tablecard"><table><thead><tr><th>Item</th><th>Prep.</th><th>Vend.</th><th>Sobra</th></tr></thead>
+        <tbody id="fechCorpo"></tbody>
+        <tfoot><tr><td>Total</td><td id="tPrep">0</td><td class="vend" id="tVend">0</td><td id="tSobra">0</td></tr></tfoot></table></div>
+      <p class="hint">Sobra em vermelho = vendeu mais do que marcou na produção.</p>
+    </section>
+    <section class="panel" id="p-entregas" role="tabpanel" hidden>
+      <h2 class="sec">Pedidos para entrega</h2>
+      <div id="entregasConteudo"></div>
+    </section>
+    <section class="panel" id="p-historico" role="tabpanel" hidden>
+      <h2 class="sec">Faturamento dos últimos 7 dias</h2>
+      <div class="chartcard"><div class="chart" id="chart"></div></div>
+      <h2 class="sec">Mais vendidos hoje</h2>
+      <div class="top3" id="top3"></div>
+      <h2 class="sec">Resumo por dia</h2>
+      <div class="histlist" id="histlist"></div>
+    </section>
+  </main>
+</div>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Figtree:wght@400;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<script>
+"use strict";
+/* ================= ESTADO LOCAL (espelho do servidor) ================= */
+let estado=null, hist=null, MAPA={}, CATS=[];
+let papel="dono", rainOn=false, abaAtiva="mesas", mesaView="grid", alvoAtivo=null;
+let confirmaVenda=null, ocupado=false;
+const NUM_MESAS=12;
+
+const brl=n=>Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const brl0=n=>"R$ "+Math.round(n).toLocaleString("pt-BR");
+const DIAS_SEM=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+function diaSemanaISO(iso){const[a,m,d]=iso.split("-");return new Date(+a,+m-1,+d).getDay();}
+function rotuloData(iso){const[a,m,d]=iso.split("-");return DIAS_SEM[diaSemanaISO(iso)]+" "+d+"/"+m;}
+function temTipo(key){return MAPA[key]&&MAPA[key].u==null;}
+function preco(key,tipo){const it=MAPA[key];if(!it)return 0;if(it.u!=null)return it.u;return tipo==="c"?it.c:it.s;}
+function nomeItem(it){const n=MAPA[it.key]?MAPA[it.key].nome:it.key;return n+(it.tipo?(it.tipo==="c"?" compl.":" simpl."):"");}
+function somaItens(arr){return arr.reduce((a,it)=>a+preco(it.key,it.tipo||null),0);}
+function restante(key){return (estado.producao[key]||0)-(estado.vendidos[key]||0);}
+function esgotado(key){return (estado.producao[key]||0)>0 && restante(key)<=0;}
+
+/* ================= COMUNICAÇÃO COM O SERVIDOR ================= */
+function conn(txt,erro){const e=document.getElementById("conn");e.textContent=txt;e.className="conn"+(erro?" erro":"");}
+async function api(rota,corpo){
+  const r=await fetch(rota,corpo?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(corpo)}:undefined);
+  const j=await r.json();
+  if(!r.ok||j.erro)throw new Error(j.erro||("erro "+r.status));
+  return j;
+}
+async function carregar(){
+  try{
+    const [e,h]=await Promise.all([api("/api/estado"),api("/api/historico?dias=7")]);
+    estado=e;hist=h.dias;
+    if(!Object.keys(MAPA).length){MAPA=Object.fromEntries(estado.menu.map(i=>[i.key,i]));CATS=[...new Set(estado.menu.map(i=>i.cat))];}
+    conn("● conectado · atualiza sozinho");
+    renderTudo();
+  }catch(err){conn("⚠ sem conexão com o sistema — tentando de novo…",true);}
+}
+async function acao(rota,corpo){
+  if(ocupado)return;ocupado=true;
+  try{const j=await api(rota,corpo);estado=j;if(j.confirmacao)confirmaVenda=j.confirmacao;
+    try{hist=(await api("/api/historico?dias=7")).dias;}catch(e){}
+    conn("● conectado · atualiza sozinho");renderTudo();
+  }catch(err){conn("⚠ "+err.message,true);}
+  finally{ocupado=false;}
+}
+
+/* ================= ABAS / PAPÉIS ================= */
+const ABAS={mesas:"Mesas",producao:"Produção",fechamento:"Fechamento",entregas:"Entregas",historico:"Histórico"};
+const PERMISSOES={atendente:["mesas","fechamento"],dono:["mesas","producao","fechamento","entregas","historico"],motoboy:["entregas"]};
+function montarAbas(){
+  const vis=PERMISSOES[papel];if(!vis.includes(abaAtiva))abaAtiva=vis[0];
+  const bar=document.getElementById("tabbar");
+  bar.innerHTML=vis.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${t===abaAtiva?"true":"false"}">${ABAS[t]}</button>`).join("");
+  bar.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{abaAtiva=b.dataset.tab;if(abaAtiva==="mesas"){mesaView="grid";alvoAtivo=null;}montarAbas();mostrarAba();}));
+  document.getElementById("rainBtn").style.display=papel==="motoboy"?"none":"inline-flex";
+}
+function mostrarAba(){["mesas","producao","fechamento","entregas","historico"].forEach(t=>document.getElementById("p-"+t).hidden=(t!==abaAtiva));renderTudo();}
+
+/* ================= RENDER ================= */
+function renderTudo(){
+  if(!estado)return;
+  document.getElementById("dataHoje").textContent=rotuloData(estado.data);
+  const pill=document.getElementById("caixaPill");pill.className="caixapill "+(estado.caixa.aberto?"aberto":"fechado");
+  document.getElementById("caixaTxt").textContent=estado.caixa.aberto?"Aberto":"Fechado";
+  if(abaAtiva==="mesas")renderMesas();
+  if(abaAtiva==="producao")renderProducao();
+  if(abaAtiva==="fechamento")renderFechamento();
+  if(abaAtiva==="entregas")renderEntregas();
+  if(abaAtiva==="historico")renderHistorico();
+}
+
+function mesasAbertas(){return estado.mesas||{};}
+function labelAlvo(a){return a==="balcao"?"Balcão":"Mesa "+a.split("-")[1];}
+function renderMesas(){
+  const grid=document.getElementById("mesasGrid"),det=document.getElementById("mesaDetalhe");
+  if(mesaView==="detalhe"&&alvoAtivo){grid.hidden=true;det.hidden=false;renderDetalhe();return;}
+  grid.hidden=false;det.hidden=true;
+  let aviso="";
+  if(confirmaVenda){aviso=`<div class="vendaok" id="vendaOk">✓ ${confirmaVenda.alvo} fechada no ${confirmaVenda.pag} · ${brl(confirmaVenda.total)}</div>`;
+    confirmaVenda=null;setTimeout(()=>{const e=document.getElementById("vendaOk");if(e)e.style.opacity="0";},2600);}
+  const ma=mesasAbertas();
+  let html=aviso+`<h2 class="sec">Mesas & balcão</h2><div class="mesagrid">`;
+  const bItens=ma["balcao"]||[],bt=somaItens(bItens);
+  html+=`<button class="mesa balcao" data-alvo="balcao"><span class="nm">Balcão</span><span class="st">venda avulsa</span><span class="vv">${bItens.length?brl0(bt):"—"}</span></button>`;
+  for(let i=1;i<=NUM_MESAS;i++){const a="mesa-"+i,it=ma[a]||[],oc=it.length>0;
+    html+=`<button class="mesa ${oc?"ocupada":""}" data-alvo="${a}"><span class="nm">Mesa ${i}</span><span class="st">${oc?it.length+" itens":"livre"}</span><span class="vv">${oc?brl0(somaItens(it)):"—"}</span></button>`;}
+  html+=`</div>`;grid.innerHTML=html;
+  grid.querySelectorAll(".mesa").forEach(el=>el.addEventListener("click",()=>{alvoAtivo=el.dataset.alvo;mesaView="detalhe";renderMesas();}));
+}
+function renderDetalhe(){
+  const det=document.getElementById("mesaDetalhe");const itens=(mesasAbertas()[alvoAtivo])||[];
+  let picker="";
+  CATS.forEach(cat=>{picker+=`<h2 class="sec">${cat}</h2><div class="catgrid">`;
+    estado.menu.filter(i=>i.cat===cat).forEach(it=>{
+      const prod=estado.producao[it.key]||0,rest=restante(it.key),esg=esgotado(it.key);
+      let c;if(esg)c=`<span class="cont esg">ESGOTADO</span>`;else if(prod>0&&rest<=3)c=`<span class="cont baixo">restam ${rest}</span>`;else if(prod>0)c=`<span class="cont">restam ${rest}</span>`;else c=`<span class="cont"></span>`;
+      const dis=esg?"disabled":"";
+      const bt=temTipo(it.key)
+        ?`<button class="add" ${dis} data-k="${it.key}" data-t="s"><span class="t">SIMPLES</span><span class="p">${brl0(it.s)}</span></button><button class="add" ${dis} data-k="${it.key}" data-t="c"><span class="t">COMPLETO</span><span class="p">${brl0(it.c)}</span></button>`
+        :`<button class="add single" ${dis} data-k="${it.key}" data-t="u"><span class="p">+ ${brl0(it.u)}</span></button>`;
+      picker+=`<div class="item${esg?" esgotado":""}"><span class="nome">${it.nome}</span>${c}<div class="addbtns">${bt}</div></div>`;});
+    picker+=`</div>`;});
+  const total=somaItens(itens);
+  const comanda=itens.length?itens.map((it,idx)=>`<div class="cl"><span class="nm">${nomeItem(it)}</span><span class="pr">${brl(preco(it.key,it.tipo||null))}</span><button class="rm" data-rm="${idx}" aria-label="remover">✕</button></div>`).join(""):`<div class="vazia">Nada lançado ainda. Toque nos itens abaixo.</div>`;
+  const podeFechar=itens.length?"":"disabled";
+  det.innerHTML=`<div class="dethead"><button class="btnvoltar" id="voltarMesas">‹ Mesas</button><h2>${labelAlvo(alvoAtivo)}</h2></div>
+    <div class="comanda">${comanda}${itens.length?`<div class="comtot"><span class="l">Total da comanda</span><span class="v">${brl(total)}</span></div>`:""}</div>
+    <div class="pagrow">
+      <button class="pagbtn" ${podeFechar} data-pag="Dinheiro"><span class="ic">💵</span>Dinheiro</button>
+      <button class="pagbtn" ${podeFechar} data-pag="Cartão"><span class="ic">💳</span>Cartão</button>
+      <button class="pagbtn" ${podeFechar} data-pag="Pix"><span class="ic">📱</span>Pix</button>
+    </div><div class="pagobs">Sem parcelamento nem taxa de maquininha no presencial.</div>${picker}`;
+  det.querySelector("#voltarMesas").addEventListener("click",()=>{mesaView="grid";alvoAtivo=null;renderMesas();});
+  det.querySelectorAll(".add").forEach(b=>b.addEventListener("click",()=>{if(esgotado(b.dataset.k))return;
+    acao("/api/mesa/item",{alvo:alvoAtivo,key:b.dataset.k,tipo:b.dataset.t==="u"?null:b.dataset.t});}));
+  det.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>acao("/api/mesa/remove",{alvo:alvoAtivo,idx:+b.dataset.rm})));
+  det.querySelectorAll(".pagbtn").forEach(b=>b.addEventListener("click",()=>{if(!itens.length)return;
+    const alvo=alvoAtivo;mesaView="grid";alvoAtivo=null;acao("/api/mesa/fechar",{alvo,pag:b.dataset.pag,rotulo:labelAlvo(alvo)});}));
+}
+
+function renderProducao(){
+  const cont=document.getElementById("producaoConteudo");
+  cont.innerHTML=estado.menu.map(it=>{const prod=estado.producao[it.key]||0;const rest=prod>0?(esgotado(it.key)?"esgotado":"restam "+restante(it.key)):"";
+    return `<div class="prod"><span class="nome">${it.nome}</span><span class="rest" style="color:${esgotado(it.key)?"var(--crit)":"var(--muted)"}">${rest}</span>
+      <div class="stepper"><button data-k="${it.key}" data-d="-1" aria-label="menos">−</button><span class="val">${prod}</span><button data-k="${it.key}" data-d="1" aria-label="mais">+</button></div></div>`;}).join("");
+  cont.querySelectorAll(".stepper button").forEach(b=>b.addEventListener("click",()=>{
+    const k=b.dataset.k,nova=Math.max(0,(estado.producao[k]||0)+(+b.dataset.d));acao("/api/producao",{key:k,qtd:nova});}));
+}
+
+function fatPresencial(){return estado.vendas.reduce((a,s)=>a+s.total,0);}
+function valorZap(p){return somaItens(p.itens)+(p.taxa||0);}
+function fatZap(){return estado.pedidosZap.reduce((a,p)=>a+valorZap(p),0);}
+function pagamentos(){const t={Dinheiro:0,Cartão:0,Pix:0};estado.vendas.forEach(s=>t[s.pag]=(t[s.pag]||0)+s.total);estado.pedidosZap.forEach(p=>{if(p.pag)t[p.pag]=(t[p.pag]||0)+valorZap(p);});return t;}
+function renderFechamento(){
+  const pz=estado.pedidosZap,nRet=pz.filter(p=>p.tipo==="retirada").length,nEnt=pz.filter(p=>p.tipo==="entrega").length;
+  document.getElementById("frPresV").textContent=brl0(fatPresencial());
+  document.getElementById("frPresF").textContent=estado.vendas.length+" vendas fechadas";
+  document.getElementById("frZapV").textContent=brl0(fatZap());
+  document.getElementById("frZapF").textContent=pz.length+" pedidos · "+nRet+" retirada, "+nEnt+" entrega";
+  const pg=pagamentos();
+  document.getElementById("payDin").textContent=brl0(pg.Dinheiro);
+  document.getElementById("payCar").textContent=brl0(pg.Cartão);
+  document.getElementById("payPix").textContent=brl0(pg.Pix);
+  const taxaMoto=pz.filter(p=>p.tipo==="entrega").reduce((a,p)=>a+(p.taxa||0),0);
+  document.getElementById("motoVal").textContent=brl(taxaMoto);
+  document.getElementById("motoFoot").textContent=nEnt+" entregas · taxa paga ao entregador";
+  document.getElementById("caixaTotal").textContent=brl(fatPresencial()+fatZap());
+  const linha=document.getElementById("caixaStatusLinha"),btn=document.getElementById("btnFechar"),form=document.getElementById("fecharForm");
+  if(estado.caixa.aberto){linha.innerHTML=`Caixa <b>aberto</b> desde ${estado.caixa.horaAbriu||"—"}.`;btn.textContent="Fechar caixa";btn.className="bigbtn fechar";}
+  else{linha.innerHTML=`Caixa <b>fechado</b> por ${estado.caixa.fechadoPor} às ${estado.caixa.horaFechou}.`;form.classList.remove("on");btn.textContent="Abrir novo caixa";btn.className="bigbtn abrir";}
+  const vend=estado.vendidos,prod=estado.producao;let tp=0,tv=0,ts=0,html="";
+  CATS.forEach(cat=>{html+=`<tr class="catrow"><td colspan="4">${cat}</td></tr>`;
+    estado.menu.filter(i=>i.cat===cat).forEach(it=>{const p=prod[it.key]||0,v=vend[it.key]||0,s=p-v;tp+=p;tv+=v;ts+=s;
+      let cls="sobra-ok",extra="";if(s<0){cls="sobra-neg";extra=`<span class="pill alerta">+${-s}</span>`;}else if(s===0&&p>0)cls="sobra-zero";
+      html+=`<tr><td>${it.nome}</td><td>${p}</td><td class="vend">${v}</td><td class="${cls}">${s}${extra}</td></tr>`;});});
+  document.getElementById("fechCorpo").innerHTML=html;
+  document.getElementById("tPrep").textContent=tp;document.getElementById("tVend").textContent=tv;document.getElementById("tSobra").textContent=ts;
+}
+
+function renderEntregas(){
+  const cont=document.getElementById("entregasConteudo");
+  const ent=estado.pedidosZap.filter(p=>p.tipo==="entrega");
+  if(!ent.length){cont.innerHTML=`<div class="vazio">Nenhum pedido de entrega agora.<br>Os pedidos aparecem aqui automaticamente quando o atendimento do WhatsApp estiver ligado.</div>`;return;}
+  cont.innerHTML=ent.map(p=>{const resumo=p.itens.map(nomeItem).join(", ");
+    const stTxt={preparo:"Na cozinha",saindo:"Saiu p/ entrega",entregue:"Entregue"}[p.status];
+    let acaoB="";if(p.status==="preparo")acaoB=`<button class="act sair" data-id="${p.id}" data-to="saindo">Saiu para entrega</button>`;else if(p.status==="saindo")acaoB=`<button class="act entregar" data-id="${p.id}" data-to="entregue">Marcar entregue</button>`;
+    return `<div class="ped ${p.status}"><div class="top"><span class="id">${p.id}</span><span class="stbadge ${p.status}">${stTxt}</span><span class="hr">${p.hora}</span></div>
+      <div class="bairro">${p.bairro||""}</div><div class="end">${p.end||""}</div><div class="itens">${resumo}</div>
+      <div class="linha"><span class="valor">${brl(valorZap(p))}</span><span class="pag">${p.pag||""}</span>${acaoB}</div>
+      <div class="taxa">🛵 Taxa desta entrega: <b>${brl(p.taxa||0)}</b></div></div>`;}).join("");
+  // Obs: marcar "saiu/entregue" vira endpoint quando o WhatsApp estiver ligado.
+  cont.querySelectorAll(".act").forEach(b=>b.addEventListener("click",()=>conn("Aviso ao cliente só funciona com o WhatsApp ligado (próximo passo).",true)));
+}
+
+function renderHistorico(){
+  if(!hist){return;}
+  const fats=hist.map(d=>d.faturamento),max=Math.max(...fats,1);
+  document.getElementById("chart").innerHTML=hist.map(d=>{const h=Math.max(4,Math.round(d.faturamento/max*118));const hj=d.data===estado.data?" hoje":"";
+    return `<div class="bar${hj}"><span class="cval">${brl0(d.faturamento)}</span><div class="col" style="height:${h}px"></div><span class="cday">${DIAS_SEM[diaSemanaISO(d.data)]}</span></div>`;}).join("");
+  document.getElementById("histlist").innerHTML=[...hist].reverse().map(d=>{const marca=d.data===estado.data?' <small>· hoje</small>':'';
+    return `<div class="histrow"><div class="d">${rotuloData(d.data)}${marca}</div><span class="n">${d.itens} itens · ${d.entregas} entr.</span><span class="ff">${brl0(d.faturamento)}</span></div>`;}).join("");
+  // mais vendidos hoje
+  const soma={};estado.menu.forEach(i=>soma[i.key]=estado.vendidos[i.key]||0);
+  const rank=estado.menu.map(i=>({nome:i.nome,q:soma[i.key]})).sort((a,b)=>b.q-a.q).slice(0,5),maxq=Math.max(...rank.map(r=>r.q),1);
+  const temVenda=rank.some(r=>r.q>0);
+  document.getElementById("top3").innerHTML=temVenda?rank.map((r,i)=>`<div class="row"><span class="rk">${i+1}º</span><span style="flex:0 0 112px;min-width:0">${r.nome}</span><span class="bn"><i style="width:${Math.round(r.q/maxq*100)}%"></i></span><span class="qt">${r.q}</span></div>`).join(""):`<div class="vazio">Ainda não há vendas hoje.</div>`;
+}
+
+/* ================= CONTROLES ================= */
+document.getElementById("btnFechar").addEventListener("click",()=>{
+  if(estado.caixa.aberto)document.getElementById("fecharForm").classList.toggle("on");
+  else acao("/api/caixa/abrir",{});
+});
+document.getElementById("btnConfirmaFecha").addEventListener("click",()=>{
+  const nome=document.getElementById("nomeFecha").value.trim();if(!nome){document.getElementById("nomeFecha").focus();return;}
+  document.getElementById("nomeFecha").value="";acao("/api/caixa/fechar",{nome});
+});
+document.getElementById("rainBtn").addEventListener("click",()=>{rainOn=!rainOn;const b=document.getElementById("rainBtn");
+  b.setAttribute("aria-pressed",rainOn?"true":"false");document.getElementById("rainLbl").textContent="Chuva: "+(rainOn?"on":"off");
+  document.getElementById("rainFlag").classList.toggle("on",rainOn);});
+document.querySelectorAll('#roleSeg button').forEach(b=>b.addEventListener("click",()=>{papel=b.dataset.role;
+  document.querySelectorAll('#roleSeg button').forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));
+  if(abaAtiva==="mesas"){mesaView="grid";alvoAtivo=null;}montarAbas();mostrarAba();}));
+
+/* ================= INÍCIO + SINCRONIZAÇÃO ================= */
+montarAbas();
+carregar();
+setInterval(()=>{ if(!ocupado && !(abaAtiva==="mesas"&&mesaView==="detalhe")) carregar(); },5000);
+</script>
+</body>
+</html>
