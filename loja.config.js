@@ -11,12 +11,43 @@ module.exports = {
   versiculo: "Tudo posso naquele que me fortalece",
   formasPagamento: "cartão e Pix",
 
-  // ---- FALTA CONFIRMAR COM O DONO ----
-  // Enquanto estiver null, o atendente avisa com sinceridade que ainda está
-  // sendo confirmado, em vez de inventar valor.
+  // ---- ENTREGA ----
+  // Endereço da barraca (referência pro motoboy / rota).
+  endereco: "Rua Treze de Setembro, 1233 - Areal, Porto Velho-RO, 76804-304",
+
   entrega: {
-    taxa: null,     // ex.: "R$ 5,00"
-    bairros: null,  // ex.: "Centro, Embratel, Nova Porto Velho"
+    // Taxa por bairro, em reais. A taxa é paga direto ao entregador.
+    // Pra adicionar um bairro, é só incluir aqui na lista.
+    tabela: {
+      "Areal": 8,
+      "Mato Grosso": 8,
+      "Tucumanzal": 8,
+      "Mocambo": 8,
+      "Embratel": 12,
+      "Três Marias": 15,
+      "Flodoaldo Pontes Pinto": 13,
+      "Condomínio Santa Bárbara": 10,
+      "Residencial Volpi 1": 10,
+      "Residencial Volpi 2": 10,
+      "Villas do Madeira 1": 12,
+      "Villas do Madeira 2": 12,
+      "Bosque do Madeira": 15,
+      "Cai n'água": 10,
+      "Castanheira": 15,
+      "Aponiã": 15,
+    },
+
+    // Bairro atendido mas que não está na lista acima.
+    taxaBairroNovo: 25,
+
+    // +R$2 quando o cliente paga NA MAQUININHA (cartão), menos nestes bairros perto:
+    acrescimoCartao: 2,
+    isentosCartao: ["Areal", "Mato Grosso", "Tucumanzal", "Mocambo"],
+
+    // +R$2 em dia de chuva, em TODOS os bairros sem exceção.
+    // Ligado/desligado pela variável de ambiente MODO_CHUVA ("1" = chovendo).
+    // No sistema completo, isso vira um botão no painel.
+    acrescimoChuva: 2,
   },
 
   // ---- CARDÁPIO (a IA lê este texto; mantenha simples e exato) ----

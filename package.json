@@ -4,12 +4,13 @@
   "description": "Atendente automatico replicavel para espetinho/lanche (nucleo: cerebro + servidor)",
   "main": "server.js",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "better-sqlite3": "^13.0.3"
   }
 }
