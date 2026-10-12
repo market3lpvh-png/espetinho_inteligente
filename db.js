@@ -129,7 +129,8 @@ function garantirDia(data) {
     const producao = {};
     menu().forEach((it) => (producao[it.key] = 0));
     store.dias[data] = {
-      caixa: { aberto: true, horaAbriu: hhmm(), fechadoPor: null, horaFechou: null, fundoAbertura: 0, valorContado: null },
+      // o dia começa com o caixa FECHADO: a 1ª ação é "Abrir caixa" e informar o fundo de troco
+      caixa: { aberto: false, horaAbriu: null, fechadoPor: null, horaFechou: null, fundoAbertura: 0, valorContado: null },
       producao, mesas: {}, vendas: [], pedidosZap: [], _seq: 0,
     };
     salvar();
