@@ -1,15 +1,10 @@
 // ============================================================
 //  BANCO DE DADOS (arquivo JSON) — a "memória compartilhada" do sistema.
-//  Guarda produção, mesas abertas, vendas, caixa e pedidos do WhatsApp.
-//  Todos os aparelhos leem/gravam aqui, então o que a atendente faz na
-//  barraca aparece pro dono em casa.
+//  Guarda o CARDÁPIO (editável pelo dono), produção, mesas, vendas,
+//  caixa e pedidos do WhatsApp. Todos os aparelhos leem/gravam aqui.
 //
-//  Por que arquivo JSON e não um banco "de verdade"? Pro tamanho de uma
-//  barraca é robusto de sobra, não precisa de nada pra compilar (não dá
-//  aquele "falha de segmentação") e é fácil de manter.
-//
-//  O arquivo PRECISA ficar num "volume" da Railway (disco que não some
-//  quando o app reinicia). O caminho é a variável DB_PATH. Veja o README.
+//  Arquivo único, sem nada pra compilar (não dá "falha de segmentação").
+//  Fica num volume da Railway (variável DB_PATH). Veja o README.
 // ============================================================
 
 const fs = require("fs");
@@ -18,8 +13,8 @@ const path = require("path");
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, "data", "espetinho.db");
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
-// ---- Cardápio (fonte da verdade dos itens e preços) ----
-const ITENS = [
+// ---- Cardápio inicial (só usado na PRIMEIRA vez; depois vive no banco) ----
+const CARDAPIO_PADRAO = [
   { key: "carne",     nome: "Carne",             cat: "Espetinhos", s: 10, c: 22 },
   { key: "calabresa", nome: "Calabresa",         cat: "Espetinhos", s: 10, c: 22 },
   { key: "frango",    nome: "Frango",            cat: "Espetinhos", s: 10, c: 22 },
@@ -37,15 +32,87 @@ const ITENS = [
   { key: "aguagas",   nome: "Água com gás",      cat: "Bebidas",    u: 4  },
   { key: "suco",      nome: "Suco",              cat: "Bebidas",    u: 7  },
 ];
-const MAPA = Object.fromEntries(ITENS.map((i) => [i.key, i]));
-function temTipo(key) { return MAPA[key] && MAPA[key].u == null; }
+
+// ---- Carrega o arquivo na memória (uma vez) ----
+let store = { dias: {}, menu: null };
+try {
+  const parsed = JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
+  if (parsed && typeof parsed === "object" && parsed.dias) store = parsed;
+} catch (e) { store = { dias: {}, menu: null }; }
+if (!Array.isArray(store.menu)) store.menu = CARDAPIO_PADRAO.map((i) => ({ ...i }));
+
+function salvar() {
+  const tmp = DB_PATH + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(store));
+  fs.renameSync(tmp, DB_PATH);
+}
+
+// ---- Acesso ao cardápio (agora é dado do banco) ----
+function menu() { return store.menu; }
+function itemByKey(key) { return store.menu.find((i) => i.key === key); }
+function temTipo(key) { const it = itemByKey(key); return !!(it && it.u == null); }
 function preco(key, tipo) {
-  const it = MAPA[key];
+  const it = itemByKey(key);
   if (!it) return 0;
   if (it.u != null) return it.u;
   return tipo === "c" ? it.c : it.s;
 }
 function somaItens(itens) { return itens.reduce((a, it) => a + preco(it.key, it.tipo || null), 0); }
+
+// slug pra gerar a "chave" interna a partir do nome, sem repetir
+function slug(nome) {
+  let s = String(nome || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24);
+  if (!s) s = "item";
+  let base = s, n = 2;
+  while (store.menu.some((i) => i.key === s)) { s = base + "_" + n; n++; }
+  return s;
+}
+
+// Cria ou edita um item do cardápio.
+// Campos: { key?, nome, cat, tipo:"espetinho"|"unico", s, c, u }
+function salvarItemMenu(dados) {
+  const nome = String(dados.nome || "").trim();
+  if (!nome) throw new Error("informe o nome do item");
+  const cat = String(dados.cat || "Outros").trim() || "Outros";
+  const unico = dados.tipo === "unico" || (dados.u != null && dados.s == null && dados.c == null);
+  let item;
+  if (unico) {
+    const u = Math.max(0, Number(dados.u) || 0);
+    item = { nome, cat, u };
+  } else {
+    const s = Math.max(0, Number(dados.s) || 0);
+    const c = Math.max(0, Number(dados.c) || 0);
+    item = { nome, cat, s, c };
+  }
+  if (dados.key && itemByKey(dados.key)) {
+    const i = store.menu.findIndex((x) => x.key === dados.key);
+    store.menu[i] = { key: dados.key, ...item };
+  } else {
+    store.menu.push({ key: slug(nome), ...item });
+  }
+  salvar();
+  return store.menu;
+}
+function removerItemMenu(key) {
+  store.menu = store.menu.filter((i) => i.key !== key);
+  salvar();
+  return store.menu;
+}
+
+// Texto do cardápio pro atendente (o cérebro lê isto)
+function cardapioTexto() {
+  const cats = [...new Set(store.menu.map((i) => i.cat))];
+  let txt = "";
+  cats.forEach((cat) => {
+    txt += "\n" + cat.toUpperCase() + ":\n";
+    store.menu.filter((i) => i.cat === cat).forEach((i) => {
+      if (i.u != null) txt += `- ${i.nome}: R$${i.u},00\n`;
+      else txt += `- ${i.nome}: simples R$${i.s},00 | completo R$${i.c},00\n`;
+    });
+  });
+  return txt.trim();
+}
 
 // ---- Datas (use TZ=America/Porto_Velho na Railway) ----
 function hojeData() {
@@ -57,44 +124,24 @@ function hhmm() {
   return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 }
 
-// ---- Carrega o arquivo na memória (uma vez) ----
-// Se o arquivo não existir ou não for um JSON válido (ex.: sobrou um banco
-// antigo de outro formato), começa do zero sem travar.
-let store = { dias: {} };
-try {
-  const txt = fs.readFileSync(DB_PATH, "utf8");
-  const parsed = JSON.parse(txt);
-  if (parsed && typeof parsed === "object" && parsed.dias) store = parsed;
-} catch (e) {
-  store = { dias: {} };
-}
-
-// ---- Grava no disco de forma segura (escreve num temporário e troca) ----
-function salvar() {
-  const tmp = DB_PATH + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(store));
-  fs.renameSync(tmp, DB_PATH);
-}
-
-// ---- Garante a estrutura do dia (caixa aberto, produção zerada) ----
 function garantirDia(data) {
   if (!store.dias[data]) {
     const producao = {};
-    ITENS.forEach((it) => (producao[it.key] = 0));
+    menu().forEach((it) => (producao[it.key] = 0));
     store.dias[data] = {
       caixa: { aberto: true, horaAbriu: hhmm(), fechadoPor: null, horaFechou: null, fundoAbertura: 0, valorContado: null },
-      producao,
-      mesas: {},
-      vendas: [],
-      pedidosZap: [],
-      _seq: 0,
+      producao, mesas: {}, vendas: [], pedidosZap: [], _seq: 0,
     };
     salvar();
   }
-  return store.dias[data];
+  // garante que itens novos do cardápio tenham entrada na produção do dia
+  const d = store.dias[data];
+  let mudou = false;
+  menu().forEach((it) => { if (d.producao[it.key] == null) { d.producao[it.key] = 0; mudou = true; } });
+  if (mudou) salvar();
+  return d;
 }
 
-// ---- Leitura: snapshot completo do dia ----
 function estadoDoDia(data) {
   const d = garantirDia(data);
   return {
@@ -105,15 +152,14 @@ function estadoDoDia(data) {
     vendas: d.vendas.map((v) => ({ id: v.id, alvo: v.alvo, itens: v.itens, total: v.total, pag: v.pag, hora: v.hora })),
     pedidosZap: d.pedidosZap.map((p) => ({ id: p.id, tipo: p.tipo, bairro: p.bairro, end: p.end, pag: p.pag, itens: p.itens, taxa: p.taxa, status: p.status, hora: p.hora })),
     vendidos: vendidos(data),
-    menu: ITENS,
+    menu: menu(),
   };
 }
 
-// ---- Estoque: vendidos = mesas abertas + vendas + pedidos zap ----
 function vendidos(data) {
   const d = garantirDia(data);
   const v = {};
-  ITENS.forEach((i) => (v[i.key] = 0));
+  menu().forEach((i) => (v[i.key] = 0));
   Object.values(d.mesas).forEach((itens) => itens.forEach((it) => (v[it.key] = (v[it.key] || 0) + 1)));
   d.vendas.forEach((s) => s.itens.forEach((it) => (v[it.key] = (v[it.key] || 0) + 1)));
   d.pedidosZap.forEach((p) => p.itens.forEach((it) => (v[it.key] = (v[it.key] || 0) + 1)));
@@ -128,10 +174,9 @@ function esgotado(data, key) {
   return (d.producao[key] || 0) > 0 && restante(data, key) <= 0;
 }
 
-// ---- Escritas ----
 function addItemMesa(data, alvo, key, tipo) {
   const d = garantirDia(data);
-  if (!MAPA[key]) throw new Error("item inexistente");
+  if (!itemByKey(key)) throw new Error("item inexistente");
   if (!alvo) throw new Error("mesa inválida");
   if (esgotado(data, key)) throw new Error("item esgotado");
   if (!d.mesas[alvo]) d.mesas[alvo] = [];
@@ -161,7 +206,7 @@ function fecharMesa(data, alvo, pag, rotulo) {
 }
 function setProducao(data, key, qtd) {
   const d = garantirDia(data);
-  if (!MAPA[key]) throw new Error("item inexistente");
+  if (!itemByKey(key)) throw new Error("item inexistente");
   d.producao[key] = Math.max(0, Math.round(Number(qtd) || 0));
   salvar();
   return d.producao[key];
@@ -178,12 +223,10 @@ function fecharCaixa(data, nome, contado) {
   d.caixa.aberto = false;
   d.caixa.fechadoPor = String(nome).trim();
   d.caixa.horaFechou = hhmm();
-  // valor contado na gaveta ao fechar (opcional; null = não informado)
   d.caixa.valorContado = (contado === null || contado === undefined || contado === "") ? null : Math.max(0, Number(contado) || 0);
   salvar();
 }
 
-// ---- Histórico dos últimos N dias ----
 function faturamentoDia(data) {
   const d = store.dias[data];
   if (!d) return 0;
@@ -207,7 +250,8 @@ function historico(ndias) {
 }
 
 module.exports = {
-  ITENS, MAPA, preco, temTipo, somaItens,
+  preco, temTipo, somaItens, menu, cardapioTexto,
+  salvarItemMenu, removerItemMenu,
   hojeData, estadoDoDia, vendidos, restante, esgotado,
   addItemMesa, removeItemMesa, fecharMesa, setProducao, abrirCaixa, fecharCaixa,
   garantirDia, historico,

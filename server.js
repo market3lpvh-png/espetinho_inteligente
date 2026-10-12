@@ -76,6 +76,16 @@ app.post("/api/producao", (req, res) => {
   } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
 
+// Cardápio: criar/editar e remover item (depois fica só pro dono, com login)
+app.post("/api/menu/salvar", (req, res) => {
+  try { const data = dataPedido(req); bd.salvarItemMenu(req.body || {}); responderEstado(res, data); }
+  catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
+});
+app.post("/api/menu/remover", (req, res) => {
+  try { const data = dataPedido(req); bd.removerItemMenu((req.body || {}).key); responderEstado(res, data); }
+  catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
+});
+
 // Histórico (últimos N dias) pro painel do dono
 app.get("/api/historico", (req, res) => {
   try { res.json({ dias: bd.historico(Number(req.query.dias) || 7) }); }

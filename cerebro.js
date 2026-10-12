@@ -8,6 +8,7 @@
 // ============================================================
 
 const cfg = require("./loja.config");
+const bd = require("./db");
 
 function montarRegrasEntrega() {
   const e = cfg.entrega;
@@ -38,8 +39,8 @@ function montarInstrucoes() {
 
   return `Você é o atendente virtual do "${cfg.nome}". Atenda com simpatia e calor humano, como um atendente de bairro que conhece o freguês. Use português brasileiro coloquial, respostas curtas (estilo WhatsApp), no máximo 1 emoji por mensagem.
 
-CARDÁPIO OFICIAL — NUNCA invente itens nem preços fora desta lista:
-${cfg.cardapio}
+CARDÁPIO OFICIAL (o dono edita isto no painel) — NUNCA invente itens nem preços fora desta lista:
+${bd.cardapioTexto()}
 
 REGRAS:
 1. Cumprimente e pergunte o que a pessoa deseja.
