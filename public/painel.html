@@ -96,7 +96,9 @@
   .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .stepper button{width:38px;height:36px;background:var(--surface-2);border:none;color:var(--fg);font-size:20px;cursor:pointer}
   .stepper button:active{background:var(--ember);color:#160f08}
-  .stepper .val{width:46px;text-align:center;font-family:var(--f-mono);font-size:15px;font-variant-numeric:tabular-nums}
+  .stepper .val{width:52px;text-align:center;font-family:var(--f-mono);font-size:15px;font-variant-numeric:tabular-nums;background:var(--surface);border:none;color:var(--fg);outline:none;-moz-appearance:textfield}
+  .stepper .val::-webkit-outer-spin-button,.stepper .val::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .stepper .val:focus{background:var(--surface-2)}
   .fronts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
   .front{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px}
   .front .k{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
@@ -113,8 +115,15 @@
   .caixabox .status{font-size:12px;color:var(--muted);margin-top:8px} .caixabox .status b{color:var(--fg)}
   .bigbtn{width:100%;margin-top:12px;border:none;border-radius:10px;padding:12px;font-family:var(--f-body);font-weight:700;font-size:14px;cursor:pointer}
   .bigbtn.abrir{background:var(--ok);color:#09150e} .bigbtn.fechar{background:var(--ember);color:#160f08}
-  .fecharform{margin-top:12px;display:none;gap:8px;flex-direction:column} .fecharform.on{display:flex}
-  .fecharform input{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:11px;color:var(--fg);font-size:14px;outline:none} .fecharform input:focus{border-color:var(--ember)}
+  .fecharform,.abrirform{margin-top:12px;display:none;gap:8px;flex-direction:column} .fecharform.on,.abrirform.on{display:flex}
+  .fecharform input,.abrirform input{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:11px;color:var(--fg);font-size:14px;outline:none} .fecharform input:focus,.abrirform input:focus{border-color:var(--ember)}
+  .reconc{margin-top:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--muted)}
+  .reconc .l{display:flex;justify-content:space-between;padding:2px 0}
+  .reconc .l b{color:var(--fg);font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+  .reconc .tt{border-top:1px solid var(--line);margin-top:4px;padding-top:6px}
+  .reconc .tt b{color:var(--gold)}
+  .reconc .dif b{font-weight:700}
+  .reconc .dif.ok b{color:var(--ok)} .reconc .dif.falta b{color:var(--crit)}
   .tablecard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:4px}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:9px 12px;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--f-mono)}
@@ -212,10 +221,16 @@
       <div class="caixabox">
         <div class="tot"><span class="lbl">Total do caixa</span><span class="val" id="caixaTotal">R$ 0</span></div>
         <div class="status" id="caixaStatusLinha"></div>
+        <div class="reconc" id="reconc"></div>
         <button class="bigbtn fechar" id="btnFechar">Fechar caixa</button>
         <div class="fecharform" id="fecharForm">
           <input id="nomeFecha" type="text" placeholder="Quem está fechando o caixa?" aria-label="Nome de quem fecha o caixa">
+          <input id="contadoFecha" type="number" inputmode="decimal" placeholder="Dinheiro contado na gaveta (R$) — opcional" aria-label="Dinheiro contado na gaveta">
           <button class="bigbtn fechar" id="btnConfirmaFecha">Confirmar fechamento</button>
+        </div>
+        <div class="abrirform" id="abrirForm">
+          <input id="fundoAbrir" type="number" inputmode="decimal" placeholder="Fundo de troco (R$) — dinheiro/moedas na gaveta" aria-label="Fundo de troco">
+          <button class="bigbtn abrir" id="btnConfirmaAbrir">Abrir caixa</button>
         </div>
       </div>
       <h2 class="sec">Preparado × Vendido × Sobra</h2>
@@ -363,9 +378,16 @@ function renderProducao(){
   const cont=document.getElementById("producaoConteudo");
   cont.innerHTML=estado.menu.map(it=>{const prod=estado.producao[it.key]||0;const rest=prod>0?(esgotado(it.key)?"esgotado":"restam "+restante(it.key)):"";
     return `<div class="prod"><span class="nome">${it.nome}</span><span class="rest" style="color:${esgotado(it.key)?"var(--crit)":"var(--muted)"}">${rest}</span>
-      <div class="stepper"><button data-k="${it.key}" data-d="-1" aria-label="menos">−</button><span class="val">${prod}</span><button data-k="${it.key}" data-d="1" aria-label="mais">+</button></div></div>`;}).join("");
+      <div class="stepper"><button data-k="${it.key}" data-d="-1" aria-label="menos">−</button>
+      <input class="val" type="number" inputmode="numeric" min="0" value="${prod}" data-k="${it.key}" aria-label="quantidade de ${it.nome}">
+      <button data-k="${it.key}" data-d="1" aria-label="mais">+</button></div></div>`;}).join("");
   cont.querySelectorAll(".stepper button").forEach(b=>b.addEventListener("click",()=>{
     const k=b.dataset.k,nova=Math.max(0,(estado.producao[k]||0)+(+b.dataset.d));acao("/api/producao",{key:k,qtd:nova});}));
+  // digitar o número direto: salva ao sair do campo ou apertar Enter
+  cont.querySelectorAll("input.val").forEach(inp=>{
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")inp.blur();});
+    inp.addEventListener("change",()=>{const k=inp.dataset.k,nova=Math.max(0,Math.round(Number(inp.value)||0));acao("/api/producao",{key:k,qtd:nova});});
+  });
 }
 
 function fatPresencial(){return estado.vendas.reduce((a,s)=>a+s.total,0);}
@@ -386,9 +408,31 @@ function renderFechamento(){
   document.getElementById("motoVal").textContent=brl(taxaMoto);
   document.getElementById("motoFoot").textContent=nEnt+" entregas · taxa paga ao entregador";
   document.getElementById("caixaTotal").textContent=brl(fatPresencial()+fatZap());
-  const linha=document.getElementById("caixaStatusLinha"),btn=document.getElementById("btnFechar"),form=document.getElementById("fecharForm");
-  if(estado.caixa.aberto){linha.innerHTML=`Caixa <b>aberto</b> desde ${estado.caixa.horaAbriu||"—"}.`;btn.textContent="Fechar caixa";btn.className="bigbtn fechar";}
-  else{linha.innerHTML=`Caixa <b>fechado</b> por ${estado.caixa.fechadoPor} às ${estado.caixa.horaFechou}.`;form.classList.remove("on");btn.textContent="Abrir novo caixa";btn.className="bigbtn abrir";}
+  const linha=document.getElementById("caixaStatusLinha"),btn=document.getElementById("btnFechar"),fform=document.getElementById("fecharForm"),aform=document.getElementById("abrirForm"),rec=document.getElementById("reconc");
+  const fundo=estado.caixa.fundoAbertura||0;
+  const dinheiro=estado.vendas.filter(v=>v.pag==="Dinheiro").reduce((a,v)=>a+v.total,0);
+  const esperado=fundo+dinheiro;
+  if(estado.caixa.aberto){
+    linha.innerHTML=`Caixa <b>aberto</b> desde ${estado.caixa.horaAbriu||"—"}.`;
+    rec.innerHTML=`<div class="l"><span>Fundo de troco</span><b>${brl(fundo)}</b></div>
+      <div class="l"><span>Vendas em dinheiro</span><b>${brl(dinheiro)}</b></div>
+      <div class="l tt"><span>Esperado na gaveta (dinheiro)</span><b>${brl(esperado)}</b></div>`;
+    btn.textContent="Fechar caixa";btn.className="bigbtn fechar";aform.classList.remove("on");
+  }else{
+    linha.innerHTML=`Caixa <b>fechado</b> por ${estado.caixa.fechadoPor||"—"} às ${estado.caixa.horaFechou||"—"}.`;
+    let html=`<div class="l"><span>Fundo de troco</span><b>${brl(fundo)}</b></div>
+      <div class="l"><span>Vendas em dinheiro</span><b>${brl(dinheiro)}</b></div>
+      <div class="l tt"><span>Esperado na gaveta</span><b>${brl(esperado)}</b></div>`;
+    if(estado.caixa.valorContado!=null){
+      const dif=estado.caixa.valorContado-esperado;
+      const cls=Math.abs(dif)<0.005?"ok":(dif<0?"falta":"ok");
+      const txt=Math.abs(dif)<0.005?"caixa bateu ✓":(dif<0?`faltou ${brl(-dif)}`:`sobrou ${brl(dif)}`);
+      html+=`<div class="l"><span>Contado na gaveta</span><b>${brl(estado.caixa.valorContado)}</b></div>
+        <div class="l dif ${cls}"><span>Diferença</span><b>${txt}</b></div>`;
+    }
+    rec.innerHTML=html;
+    fform.classList.remove("on");btn.textContent="Abrir novo caixa";btn.className="bigbtn abrir";
+  }
   const vend=estado.vendidos,prod=estado.producao;let tp=0,tv=0,ts=0,html="";
   CATS.forEach(cat=>{html+=`<tr class="catrow"><td colspan="4">${cat}</td></tr>`;
     estado.menu.filter(i=>i.cat===cat).forEach(it=>{const p=prod[it.key]||0,v=vend[it.key]||0,s=p-v;tp+=p;tv+=v;ts+=s;
@@ -430,11 +474,18 @@ function renderHistorico(){
 /* ================= CONTROLES ================= */
 document.getElementById("btnFechar").addEventListener("click",()=>{
   if(estado.caixa.aberto)document.getElementById("fecharForm").classList.toggle("on");
-  else acao("/api/caixa/abrir",{});
+  else document.getElementById("abrirForm").classList.toggle("on");
 });
 document.getElementById("btnConfirmaFecha").addEventListener("click",()=>{
   const nome=document.getElementById("nomeFecha").value.trim();if(!nome){document.getElementById("nomeFecha").focus();return;}
-  document.getElementById("nomeFecha").value="";acao("/api/caixa/fechar",{nome});
+  const contado=document.getElementById("contadoFecha").value.trim();
+  document.getElementById("nomeFecha").value="";document.getElementById("contadoFecha").value="";
+  acao("/api/caixa/fechar",{nome,contado:contado===""?null:contado});
+});
+document.getElementById("btnConfirmaAbrir").addEventListener("click",()=>{
+  const fundo=document.getElementById("fundoAbrir").value.trim();
+  document.getElementById("fundoAbrir").value="";
+  acao("/api/caixa/abrir",{fundo:fundo===""?0:fundo});
 });
 document.getElementById("rainBtn").addEventListener("click",()=>{rainOn=!rainOn;const b=document.getElementById("rainBtn");
   b.setAttribute("aria-pressed",rainOn?"true":"false");document.getElementById("rainLbl").textContent="Chuva: "+(rainOn?"on":"off");
@@ -446,7 +497,10 @@ document.querySelectorAll('#roleSeg button').forEach(b=>b.addEventListener("clic
 /* ================= INÍCIO + SINCRONIZAÇÃO ================= */
 montarAbas();
 carregar();
-setInterval(()=>{ if(!ocupado && !(abaAtiva==="mesas"&&mesaView==="detalhe")) carregar(); },5000);
+setInterval(()=>{
+  const digitando=document.activeElement && document.activeElement.tagName==="INPUT";
+  if(!ocupado && !digitando && !(abaAtiva==="mesas"&&mesaView==="detalhe")) carregar();
+},5000);
 </script>
 </body>
 </html>
