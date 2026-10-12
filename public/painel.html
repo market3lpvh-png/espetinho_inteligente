@@ -164,7 +164,9 @@
   .top3 .rk{font-family:var(--f-display);font-size:14px;color:var(--ember);width:18px}
   .top3 .bn{flex:1;height:8px;background:var(--surface-2);border-radius:5px;overflow:hidden;min-width:0} .top3 .bn i{display:block;height:100%;background:var(--ember);border-radius:5px}
   .top3 .qt{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;width:34px;text-align:right}
-  .cardnovo{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px}
+  .btnsec{width:100%;margin-top:14px;background:var(--surface-2);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:11px;font-family:var(--f-body);font-weight:600;font-size:13px;cursor:pointer}
+  .btnsec:hover{border-color:var(--ember)}
+  .cardnovo{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px;margin-top:10px}
   .cardnovo input,.cardnovo select{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--fg);font-size:14px;outline:none;font-family:var(--f-body)}
   .cardnovo input:focus,.cardnovo select:focus{border-color:var(--ember)}
   .cardnovo-linha{display:flex;gap:8px}.cardnovo-linha>*{flex:1;min-width:0}
@@ -217,8 +219,11 @@
       <p class="hint">Quando o vendido alcança o preparado, o item fica <b>esgotado</b> e some das vendas (mesas e WhatsApp).</p>
     </section>
     <section class="panel" id="p-cardapio" role="tabpanel" hidden>
-      <h2 class="sec">Adicionar item</h2>
-      <div class="cardnovo">
+      <h2 class="sec">Preços do cardápio</h2>
+      <p class="hint" style="margin:0 2px 10px;text-align:left">Toque no valor, digite o novo preço e tecle Enter. Só isso — os itens já estão todos aqui.</p>
+      <div id="cardapioLista"></div>
+      <button class="btnsec" id="btnAddToggle">+ Adicionar um item novo</button>
+      <div class="cardnovo" id="cardnovoBox" hidden>
         <input id="nvNome" type="text" placeholder="Nome do item (ex.: Linguiça)">
         <div class="cardnovo-linha">
           <select id="nvCat"><option>Espetinhos</option><option>Porções</option><option>Bebidas</option><option>Outros</option></select>
@@ -227,7 +232,6 @@
         <div class="cardnovo-linha" id="nvPrecos"></div>
         <button class="bigbtn fechar" id="nvAdd">Adicionar ao cardápio</button>
       </div>
-      <div id="cardapioLista"></div>
       <p class="hint">Os preços valem para o balcão, as mesas e o atendente do WhatsApp — tudo lê este cardápio.</p>
     </section>
 
@@ -429,6 +433,10 @@ function setupCardapioForm(){
   const tipoSel=document.getElementById("nvTipo");
   const fill=()=>{document.getElementById("nvPrecos").innerHTML=precoFieldsHTML(tipoSel.value);};
   tipoSel.addEventListener("change",fill); fill();
+  document.getElementById("btnAddToggle").addEventListener("click",()=>{
+    const box=document.getElementById("cardnovoBox");box.hidden=!box.hidden;
+    if(!box.hidden)document.getElementById("nvNome").focus();
+  });
   document.getElementById("nvAdd").addEventListener("click",()=>{
     const nome=document.getElementById("nvNome").value.trim();
     if(!nome){document.getElementById("nvNome").focus();return;}
