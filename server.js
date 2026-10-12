@@ -84,11 +84,11 @@ app.get("/api/historico", (req, res) => {
 
 // Abrir / fechar caixa
 app.post("/api/caixa/abrir", (req, res) => {
-  try { const data = dataPedido(req); bd.abrirCaixa(data); responderEstado(res, data); }
+  try { const data = dataPedido(req); bd.abrirCaixa(data, (req.body || {}).fundo); responderEstado(res, data); }
   catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
 app.post("/api/caixa/fechar", (req, res) => {
-  try { const data = dataPedido(req); bd.fecharCaixa(data, (req.body || {}).nome); responderEstado(res, data); }
+  try { const data = dataPedido(req); const b = req.body || {}; bd.fecharCaixa(data, b.nome, b.contado); responderEstado(res, data); }
   catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
 

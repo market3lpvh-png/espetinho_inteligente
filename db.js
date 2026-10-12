@@ -82,7 +82,7 @@ function garantirDia(data) {
     const producao = {};
     ITENS.forEach((it) => (producao[it.key] = 0));
     store.dias[data] = {
-      caixa: { aberto: true, horaAbriu: hhmm(), fechadoPor: null, horaFechou: null },
+      caixa: { aberto: true, horaAbriu: hhmm(), fechadoPor: null, horaFechou: null, fundoAbertura: 0, valorContado: null },
       producao,
       mesas: {},
       vendas: [],
@@ -166,17 +166,20 @@ function setProducao(data, key, qtd) {
   salvar();
   return d.producao[key];
 }
-function abrirCaixa(data) {
+function abrirCaixa(data, fundo) {
   const d = garantirDia(data);
-  d.caixa = { aberto: true, horaAbriu: hhmm(), fechadoPor: null, horaFechou: null };
+  const f = Math.max(0, Number(fundo) || 0);
+  d.caixa = { aberto: true, horaAbriu: hhmm(), fechadoPor: null, horaFechou: null, fundoAbertura: f, valorContado: null };
   salvar();
 }
-function fecharCaixa(data, nome) {
+function fecharCaixa(data, nome, contado) {
   const d = garantirDia(data);
   if (!nome || !String(nome).trim()) throw new Error("informe quem está fechando");
   d.caixa.aberto = false;
   d.caixa.fechadoPor = String(nome).trim();
   d.caixa.horaFechou = hhmm();
+  // valor contado na gaveta ao fechar (opcional; null = não informado)
+  d.caixa.valorContado = (contado === null || contado === undefined || contado === "") ? null : Math.max(0, Number(contado) || 0);
   salvar();
 }
 
