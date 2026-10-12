@@ -164,6 +164,19 @@
   .top3 .rk{font-family:var(--f-display);font-size:14px;color:var(--ember);width:18px}
   .top3 .bn{flex:1;height:8px;background:var(--surface-2);border-radius:5px;overflow:hidden;min-width:0} .top3 .bn i{display:block;height:100%;background:var(--ember);border-radius:5px}
   .top3 .qt{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;width:34px;text-align:right}
+  .cardnovo{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px}
+  .cardnovo input,.cardnovo select{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--fg);font-size:14px;outline:none;font-family:var(--f-body)}
+  .cardnovo input:focus,.cardnovo select:focus{border-color:var(--ember)}
+  .cardnovo-linha{display:flex;gap:8px}.cardnovo-linha>*{flex:1;min-width:0}
+  .cardnovo .bigbtn{margin-top:2px}
+  .carditem{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .carditem .nm{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--fg);font-size:14px;font-weight:600;outline:none}
+  .carditem .nm:focus{border-color:var(--ember)}
+  .carditem .pcampo{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .carditem .pcampo .lb{font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+  .carditem .pcampo input{width:62px;text-align:right;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:7px;color:var(--fg);font-family:var(--f-mono);font-size:13px;outline:none}
+  .carditem .pcampo input:focus{border-color:var(--ember)}
+  .carditem .rm{background:transparent;border:1px solid var(--line);color:var(--crit);border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer;flex:0 0 auto}
   .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:16px;line-height:1.5}
   .vazio{color:var(--muted);text-align:center;padding:24px;font-style:italic;font-size:13px}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -203,6 +216,21 @@
       <div id="producaoConteudo" class="catgrid"></div>
       <p class="hint">Quando o vendido alcança o preparado, o item fica <b>esgotado</b> e some das vendas (mesas e WhatsApp).</p>
     </section>
+    <section class="panel" id="p-cardapio" role="tabpanel" hidden>
+      <h2 class="sec">Adicionar item</h2>
+      <div class="cardnovo">
+        <input id="nvNome" type="text" placeholder="Nome do item (ex.: Linguiça)">
+        <div class="cardnovo-linha">
+          <select id="nvCat"><option>Espetinhos</option><option>Porções</option><option>Bebidas</option><option>Outros</option></select>
+          <select id="nvTipo"><option value="espetinho">Simples/Completo</option><option value="unico">Preço único</option></select>
+        </div>
+        <div class="cardnovo-linha" id="nvPrecos"></div>
+        <button class="bigbtn fechar" id="nvAdd">Adicionar ao cardápio</button>
+      </div>
+      <div id="cardapioLista"></div>
+      <p class="hint">Os preços valem para o balcão, as mesas e o atendente do WhatsApp — tudo lê este cardápio.</p>
+    </section>
+
     <section class="panel" id="p-fechamento" role="tabpanel" hidden>
       <h2 class="sec">Vendas por frente</h2>
       <div class="fronts">
@@ -301,8 +329,9 @@ async function acao(rota,corpo){
 }
 
 /* ================= ABAS / PAPÉIS ================= */
-const ABAS={mesas:"Mesas",producao:"Produção",fechamento:"Fechamento",entregas:"Entregas",historico:"Histórico"};
-const PERMISSOES={atendente:["mesas","fechamento"],dono:["mesas","producao","fechamento","entregas","historico"],motoboy:["entregas"]};
+const ABAS={mesas:"Mesas",producao:"Produção",cardapio:"Cardápio",fechamento:"Fechamento",entregas:"Entregas",historico:"Histórico"};
+const PERMISSOES={atendente:["mesas","fechamento"],dono:["mesas","producao","cardapio","fechamento","entregas","historico"],motoboy:["entregas"]};
+const PANEIS=["mesas","producao","cardapio","fechamento","entregas","historico"];
 function montarAbas(){
   const vis=PERMISSOES[papel];if(!vis.includes(abaAtiva))abaAtiva=vis[0];
   const bar=document.getElementById("tabbar");
@@ -310,7 +339,7 @@ function montarAbas(){
   bar.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{abaAtiva=b.dataset.tab;if(abaAtiva==="mesas"){mesaView="grid";alvoAtivo=null;}montarAbas();mostrarAba();}));
   document.getElementById("rainBtn").style.display=papel==="motoboy"?"none":"inline-flex";
 }
-function mostrarAba(){["mesas","producao","fechamento","entregas","historico"].forEach(t=>document.getElementById("p-"+t).hidden=(t!==abaAtiva));renderTudo();}
+function mostrarAba(){PANEIS.forEach(t=>document.getElementById("p-"+t).hidden=(t!==abaAtiva));renderTudo();}
 
 /* ================= RENDER ================= */
 function renderTudo(){
@@ -320,6 +349,7 @@ function renderTudo(){
   document.getElementById("caixaTxt").textContent=estado.caixa.aberto?"Aberto":"Fechado";
   if(abaAtiva==="mesas")renderMesas();
   if(abaAtiva==="producao")renderProducao();
+  if(abaAtiva==="cardapio")renderCardapio();
   if(abaAtiva==="fechamento")renderFechamento();
   if(abaAtiva==="entregas")renderEntregas();
   if(abaAtiva==="historico")renderHistorico();
@@ -388,6 +418,57 @@ function renderProducao(){
     inp.addEventListener("keydown",e=>{if(e.key==="Enter")inp.blur();});
     inp.addEventListener("change",()=>{const k=inp.dataset.k,nova=Math.max(0,Math.round(Number(inp.value)||0));acao("/api/producao",{key:k,qtd:nova});});
   });
+}
+
+/* ---- CARDÁPIO (editor do dono) ---- */
+function precoFieldsHTML(tipo){
+  if(tipo==="unico") return `<div class="pcampo"><span class="lb">Preço</span><input id="nvU" type="number" inputmode="decimal" placeholder="0"></div>`;
+  return `<div class="pcampo"><span class="lb">Simples</span><input id="nvS" type="number" inputmode="decimal" placeholder="0"></div><div class="pcampo"><span class="lb">Completo</span><input id="nvC" type="number" inputmode="decimal" placeholder="0"></div>`;
+}
+function setupCardapioForm(){
+  const tipoSel=document.getElementById("nvTipo");
+  const fill=()=>{document.getElementById("nvPrecos").innerHTML=precoFieldsHTML(tipoSel.value);};
+  tipoSel.addEventListener("change",fill); fill();
+  document.getElementById("nvAdd").addEventListener("click",()=>{
+    const nome=document.getElementById("nvNome").value.trim();
+    if(!nome){document.getElementById("nvNome").focus();return;}
+    const corpo={nome,cat:document.getElementById("nvCat").value,tipo:tipoSel.value};
+    if(tipoSel.value==="unico")corpo.u=document.getElementById("nvU").value||0;
+    else{corpo.s=document.getElementById("nvS").value||0;corpo.c=document.getElementById("nvC").value||0;}
+    document.getElementById("nvNome").value="";
+    const u=document.getElementById("nvU"),s=document.getElementById("nvS"),c=document.getElementById("nvC");
+    if(u)u.value="";if(s)s.value="";if(c)c.value="";
+    acao("/api/menu/salvar",corpo);
+  });
+}
+function renderCardapio(){
+  const cont=document.getElementById("cardapioLista");
+  const cats=[...new Set(estado.menu.map(i=>i.cat))];
+  let html="";
+  cats.forEach(cat=>{html+=`<h2 class="sec">${cat}</h2>`;
+    estado.menu.filter(i=>i.cat===cat).forEach(it=>{
+      const precos=it.u!=null
+        ? `<div class="pcampo"><span class="lb">Preço</span><input type="number" inputmode="decimal" data-k="${it.key}" data-f="u" value="${it.u}"></div>`
+        : `<div class="pcampo"><span class="lb">Simples</span><input type="number" inputmode="decimal" data-k="${it.key}" data-f="s" value="${it.s}"></div><div class="pcampo"><span class="lb">Completo</span><input type="number" inputmode="decimal" data-k="${it.key}" data-f="c" value="${it.c}"></div>`;
+      html+=`<div class="carditem"><input class="nm" value="${String(it.nome).replace(/"/g,"&quot;")}" data-k="${it.key}" data-f="nome">${precos}<button class="rm" data-rm="${it.key}" aria-label="remover">✕</button></div>`;
+    });
+  });
+  cont.innerHTML=html;
+  cont.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")inp.blur();});
+    inp.addEventListener("change",()=>{
+      const it=estado.menu.find(x=>x.key===inp.dataset.k);if(!it)return;
+      const corpo={key:it.key,nome:it.nome,cat:it.cat,tipo:it.u!=null?"unico":"espetinho"};
+      if(it.u!=null)corpo.u=it.u;else{corpo.s=it.s;corpo.c=it.c;}
+      const f=inp.dataset.f;
+      if(f==="nome")corpo.nome=inp.value.trim()||it.nome;else corpo[f]=inp.value;
+      acao("/api/menu/salvar",corpo);
+    });
+  });
+  cont.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>{
+    const it=estado.menu.find(x=>x.key===b.dataset.rm);
+    if(confirm("Remover \""+(it?it.nome:"item")+"\" do cardápio?"))acao("/api/menu/remover",{key:b.dataset.rm});
+  }));
 }
 
 function fatPresencial(){return estado.vendas.reduce((a,s)=>a+s.total,0);}
@@ -495,6 +576,7 @@ document.querySelectorAll('#roleSeg button').forEach(b=>b.addEventListener("clic
   if(abaAtiva==="mesas"){mesaView="grid";alvoAtivo=null;}montarAbas();mostrarAba();}));
 
 /* ================= INÍCIO + SINCRONIZAÇÃO ================= */
+setupCardapioForm();
 montarAbas();
 carregar();
 setInterval(()=>{
