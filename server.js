@@ -39,8 +39,8 @@ app.get("/api/estado", (req, res) => {
 app.post("/api/mesa/item", (req, res) => {
   try {
     const data = dataPedido(req);
-    const { alvo, key, tipo } = req.body || {};
-    bd.addItemMesa(data, alvo, key, tipo);
+    const { alvo, key, tipo, acomp } = req.body || {};
+    bd.addItemMesa(data, alvo, key, tipo, acomp);
     responderEstado(res, data);
   } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });

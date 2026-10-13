@@ -175,13 +175,16 @@ function esgotado(data, key) {
   return (d.producao[key] || 0) > 0 && restante(data, key) <= 0;
 }
 
-function addItemMesa(data, alvo, key, tipo) {
+function addItemMesa(data, alvo, key, tipo, acomp) {
   const d = garantirDia(data);
   if (!itemByKey(key)) throw new Error("item inexistente");
   if (!alvo) throw new Error("mesa inválida");
   if (esgotado(data, key)) throw new Error("item esgotado");
   if (!d.mesas[alvo]) d.mesas[alvo] = [];
-  d.mesas[alvo].push({ key, tipo: temTipo(key) ? (tipo === "c" ? "c" : "s") : null });
+  const t = temTipo(key) ? (tipo === "c" ? "c" : "s") : null;
+  const item = { key, tipo: t };
+  if (t === "c" && acomp) item.acomp = String(acomp); // baião ou arroz (só no completo)
+  d.mesas[alvo].push(item);
   salvar();
   return d.mesas[alvo];
 }
