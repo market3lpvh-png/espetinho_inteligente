@@ -588,16 +588,30 @@ function renderFechamento(){
 function renderEntregas(){
   const cont=document.getElementById("entregasConteudo");
   const ent=estado.pedidosZap.filter(p=>p.tipo==="entrega");
-  if(!ent.length){cont.innerHTML=`<div class="vazio">Nenhum pedido de entrega agora.<br>Os pedidos aparecem aqui automaticamente quando o atendimento do WhatsApp estiver ligado.</div>`;return;}
-  cont.innerHTML=ent.map(p=>{const resumo=p.itens.map(nomeItem).join(", ");
-    const stTxt={preparo:"Na cozinha",saindo:"Saiu p/ entrega",entregue:"Entregue"}[p.status];
-    let acaoB="";if(p.status==="preparo")acaoB=`<button class="act sair" data-id="${p.id}" data-to="saindo">Saiu para entrega</button>`;else if(p.status==="saindo")acaoB=`<button class="act entregar" data-id="${p.id}" data-to="entregue">Marcar entregue</button>`;
-    return `<div class="ped ${p.status}"><div class="top"><span class="id">${p.id}</span><span class="stbadge ${p.status}">${stTxt}</span><span class="hr">${p.hora}</span></div>
-      <div class="bairro">${p.bairro||""}</div><div class="end">${p.end||""}</div><div class="itens">${resumo}</div>
-      <div class="linha"><span class="valor">${brl(valorZap(p))}</span><span class="pag">${p.pag||""}</span>${acaoB}</div>
-      <div class="taxa">🛵 Taxa desta entrega: <b>${brl(p.taxa||0)}</b></div></div>`;}).join("");
-  // Obs: marcar "saiu/entregue" vira endpoint quando o WhatsApp estiver ligado.
-  cont.querySelectorAll(".act").forEach(b=>b.addEventListener("click",()=>conn("Aviso ao cliente só funciona com o WhatsApp ligado (próximo passo).",true)));
+  const ret=estado.pedidosZap.filter(p=>p.tipo==="retirada");
+  let html="";
+  if(!ent.length){
+    html+=`<div class="vazio">Nenhum pedido de entrega agora.<br>Os pedidos do atendente caem aqui automaticamente.</div>`;
+  }else{
+    html+=ent.map(p=>{const resumo=p.itens.map(nomeItem).join(", ");
+      const stTxt={preparo:"Na cozinha",saindo:"Saiu p/ entrega",entregue:"Entregue"}[p.status];
+      let acaoB="";if(p.status==="preparo")acaoB=`<button class="act sair" data-id="${p.id}" data-to="saindo">Saiu para entrega</button>`;else if(p.status==="saindo")acaoB=`<button class="act entregar" data-id="${p.id}" data-to="entregue">Marcar entregue</button>`;
+      const trocoLn=(p.pag==="Dinheiro"&&p.troco)?`<div class="taxa" style="color:var(--gold);border-color:rgba(244,194,74,.35);background:rgba(244,194,74,.1)">💵 Troco: <b>${p.troco}</b></div>`:"";
+      return `<div class="ped ${p.status}"><div class="top"><span class="id">${p.id}</span><span class="stbadge ${p.status}">${stTxt}</span><span class="hr">${p.hora}</span></div>
+        <div class="bairro">${p.bairro||""}</div><div class="end">${p.end||""}</div><div class="itens">${resumo}</div>
+        <div class="linha"><span class="valor">${brl(valorZap(p))}</span><span class="pag">${p.pag||""}</span>${acaoB}</div>
+        <div class="taxa">🛵 Taxa desta entrega: <b>${brl(p.taxa||0)}</b></div>${trocoLn}</div>`;}).join("");
+  }
+  if(ret.length){
+    html+=`<h2 class="sec">Retiradas no balcão (WhatsApp)</h2>`;
+    html+=ret.map(p=>{const resumo=p.itens.map(nomeItem).join(", ");
+      const trocoLn=(p.pag==="Dinheiro"&&p.troco)?` · 💵 troco ${p.troco}`:"";
+      return `<div class="ped"><div class="top"><span class="id">${p.id}</span><span class="stbadge preparo">Retirada</span><span class="hr">${p.hora}</span></div>
+        <div class="itens">${resumo}</div>
+        <div class="linha"><span class="valor">${brl(valorZap(p))}</span><span class="pag">${p.pag||""}${trocoLn}</span></div></div>`;}).join("");
+  }
+  cont.innerHTML=html;
+  cont.querySelectorAll(".act").forEach(b=>b.addEventListener("click",()=>acao("/api/pedido/status",{id:b.dataset.id,status:b.dataset.to})));
 }
 
 function renderHistorico(){
