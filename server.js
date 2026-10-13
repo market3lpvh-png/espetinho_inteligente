@@ -86,6 +86,16 @@ app.post("/api/menu/remover", (req, res) => {
   catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
 
+// Motoboy marca o pedido como "saiu" ou "entregue"
+app.post("/api/pedido/status", (req, res) => {
+  try {
+    const data = dataPedido(req);
+    const { id, status } = req.body || {};
+    bd.setStatusPedido(data, id, status);
+    responderEstado(res, data);
+  } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
+});
+
 // Histórico (últimos N dias) pro painel do dono
 app.get("/api/historico", (req, res) => {
   try { res.json({ dias: bd.historico(Number(req.query.dias) || 7) }); }
@@ -114,9 +124,14 @@ app.post("/chat", async (req, res) => {
     conversas[cliente].push({ role: "user", content: mensagem });
     const resposta = await pensar(conversas[cliente]);
     conversas[cliente].push({ role: "assistant", content: resposta });
-    const { textoCliente, cupom } = extrairCupom(resposta);
+    const { textoCliente, cupom, pedido } = extrairCupom(resposta);
     if (cupom) console.log("\n=== CUPOM PRA COZINHA ===\n" + cupom + "\n=========================\n");
-    res.json({ resposta: textoCliente, cupom });
+    let registrado = null;
+    if (pedido) {
+      try { registrado = bd.addPedidoZap(bd.hojeData(), pedido); console.log("Pedido registrado no painel:", registrado.id); }
+      catch (e) { console.log("Não deu pra registrar o pedido no painel:", e.message); }
+    }
+    res.json({ resposta: textoCliente, cupom, pedido: registrado ? registrado.id : null });
   } catch (e) { res.status(500).json({ erro: String(e.message || e) }); }
 });
 

@@ -151,7 +151,7 @@ function estadoDoDia(data) {
     producao: { ...d.producao },
     mesas: JSON.parse(JSON.stringify(d.mesas)),
     vendas: d.vendas.map((v) => ({ id: v.id, alvo: v.alvo, itens: v.itens, total: v.total, pag: v.pag, hora: v.hora })),
-    pedidosZap: d.pedidosZap.map((p) => ({ id: p.id, tipo: p.tipo, bairro: p.bairro, end: p.end, pag: p.pag, itens: p.itens, taxa: p.taxa, status: p.status, hora: p.hora })),
+    pedidosZap: d.pedidosZap.map((p) => ({ id: p.id, tipo: p.tipo, bairro: p.bairro, end: p.end, pag: p.pag, troco: p.troco || null, itens: p.itens, taxa: p.taxa, status: p.status, hora: p.hora })),
     vendidos: vendidos(data),
     menu: menu(),
   };
@@ -231,6 +231,49 @@ function fecharCaixa(data, nome, contado) {
   salvar();
 }
 
+// Grava um pedido vindo do atendente (chat/WhatsApp) no painel.
+// Recebe os itens pelo NOME do cardápio e resolve pra "chave" interna.
+function addPedidoZap(data, pedido) {
+  const d = garantirDia(data);
+  const porNome = {};
+  menu().forEach((i) => (porNome[i.nome.toLowerCase().trim()] = i));
+  const itens = (pedido.itens || []).map((it) => {
+    const found = porNome[String(it.nome || "").toLowerCase().trim()];
+    if (!found) return null;
+    const t = found.u != null ? null : (String(it.tipo || "").toLowerCase().startsWith("compl") || it.tipo === "c" ? "c" : "s");
+    const o = { key: found.key, tipo: t };
+    if (t === "c" && it.acomp) o.acomp = String(it.acomp);
+    return o;
+  }).filter(Boolean);
+  if (!itens.length) throw new Error("pedido sem itens válidos");
+  d._seqZap = (d._seqZap || 0) + 1;
+  const tipo = pedido.tipo === "entrega" ? "entrega" : "retirada";
+  const ped = {
+    id: "W-" + String(100 + d._seqZap),
+    tipo,
+    bairro: tipo === "entrega" ? (pedido.bairro || null) : null,
+    end: tipo === "entrega" ? (pedido.endereco || pedido.end || null) : null,
+    pag: pedido.pagamento || pedido.pag || null,
+    troco: pedido.troco && String(pedido.troco).toLowerCase() !== "null" ? String(pedido.troco) : null,
+    itens,
+    taxa: tipo === "entrega" ? (Number(pedido.taxa) || 0) : 0,
+    status: "preparo",
+    hora: hhmm(),
+  };
+  d.pedidosZap.push(ped);
+  salvar();
+  return ped;
+}
+function setStatusPedido(data, id, status) {
+  const d = garantirDia(data);
+  if (!["preparo", "saindo", "entregue"].includes(status)) throw new Error("status inválido");
+  const p = d.pedidosZap.find((x) => x.id === id);
+  if (!p) throw new Error("pedido não encontrado");
+  p.status = status;
+  salvar();
+  return p;
+}
+
 function faturamentoDia(data) {
   const d = store.dias[data];
   if (!d) return 0;
@@ -258,5 +301,6 @@ module.exports = {
   salvarItemMenu, removerItemMenu,
   hojeData, estadoDoDia, vendidos, restante, esgotado,
   addItemMesa, removeItemMesa, fecharMesa, setProducao, abrirCaixa, fecharCaixa,
+  addPedidoZap, setStatusPedido,
   garantirDia, historico,
 };

@@ -67,7 +67,14 @@ PAGAMENTO: cartao / Pix / dinheiro
 (se dinheiro COM troco, acrescente na linha do pagamento: "Dinheiro - troco para R$X (levar R$Y de troco)". Se dinheiro SEM troco, escreva "Dinheiro - sem troco".)
 --------------------------------
 [[/CUPOM]]
-Antes da confirmação final, NUNCA emita o bloco [[CUPOM]].`;
+
+E logo DEPOIS do cupom, inclua TAMBÉM este bloco de dados (o cliente não vê), com o pedido em JSON VÁLIDO numa única linha:
+[[PEDIDO]]
+{"tipo":"entrega","bairro":"nome do bairro ou null","endereco":"rua e numero ou null","pagamento":"Dinheiro","troco":"para 100 ou null","taxa":12,"itens":[{"nome":"Carne","tipo":"completo","acomp":"baião"},{"nome":"Refri lata","tipo":"","acomp":""}]}
+[[/PEDIDO]]
+Regras do bloco PEDIDO: "tipo" é "entrega" ou "retirada"; em retirada, bairro/endereco/taxa ficam null/0. Use os NOMES EXATOS do cardápio em "itens". "tipo" do item é "simples" ou "completo" (vazio para porções/bebidas). "acomp" é "baião" ou "arroz" só quando completo. "taxa" é o número da taxa de entrega. O JSON precisa ser válido.
+
+Antes da confirmação final, NUNCA emita os blocos [[CUPOM]] nem [[PEDIDO]].`;
 }
 
 async function pensar(historico) {
@@ -95,10 +102,16 @@ async function pensar(historico) {
 }
 
 function extrairCupom(resposta) {
-  const m = resposta.match(/\[\[CUPOM\]\]([\s\S]*?)\[\[\/CUPOM\]\]/);
-  if (!m) return { textoCliente: resposta, cupom: null };
-  const textoCliente = resposta.replace(/\[\[CUPOM\]\][\s\S]*?\[\[\/CUPOM\]\]/, "").trim();
-  return { textoCliente, cupom: m[1].trim() };
+  const mc = resposta.match(/\[\[CUPOM\]\]([\s\S]*?)\[\[\/CUPOM\]\]/);
+  const cupom = mc ? mc[1].trim() : null;
+  const mp = resposta.match(/\[\[PEDIDO\]\]([\s\S]*?)\[\[\/PEDIDO\]\]/);
+  let pedido = null;
+  if (mp) { try { pedido = JSON.parse(mp[1].trim()); } catch (e) { pedido = null; } }
+  const textoCliente = resposta
+    .replace(/\[\[CUPOM\]\][\s\S]*?\[\[\/CUPOM\]\]/, "")
+    .replace(/\[\[PEDIDO\]\][\s\S]*?\[\[\/PEDIDO\]\]/, "")
+    .trim();
+  return { textoCliente, cupom, pedido };
 }
 
 module.exports = { pensar, extrairCupom, montarInstrucoes };
