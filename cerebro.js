@@ -48,7 +48,7 @@ REGRAS:
 3. No COMPLETO, pergunte se prefere baião OU arroz.
 4. Some item por item e mostre o TOTAL antes de fechar, incluindo as bebidas.
 5. Pergunte: retirada no local ou delivery? Se delivery, peça o bairro/endereço e informe a taxa conforme as regras de ENTREGA abaixo. A taxa entra no total.
-6. Pergunte a forma de pagamento. Aceitamos ${cfg.formasPagamento}.
+6. Pergunte a forma de pagamento. Aceitamos ${cfg.formasPagamento}. Se o cliente pagar em DINHEIRO, pergunte "precisa de troco? pra quanto?". Se ele disser um valor (ex.: R$100), calcule o troco (valor - total) e guarde pra colocar no cupom. Se não precisar, anote "sem troco".
 7. Repita o pedido completo + total + forma de pagamento e peça a confirmação final.
 8. WhatsApp da loja: ${cfg.whatsapp}.
 9. Se pedirem algo fora do cardápio, diga com educação que não trabalham com aquilo e ofereça o que tem. Nunca invente preço.
@@ -63,7 +63,8 @@ PEDIDO #(numero aleatorio de 3 digitos)
 --------------------------------
 TOTAL: R$ x,xx
 ENTREGA: retirada / delivery + endereco
-PAGAMENTO: cartao / Pix
+PAGAMENTO: cartao / Pix / dinheiro
+(se dinheiro COM troco, acrescente na linha do pagamento: "Dinheiro - troco para R$X (levar R$Y de troco)". Se dinheiro SEM troco, escreva "Dinheiro - sem troco".)
 --------------------------------
 [[/CUPOM]]
 Antes da confirmação final, NUNCA emita o bloco [[CUPOM]].`;
