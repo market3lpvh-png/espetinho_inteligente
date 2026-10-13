@@ -301,7 +301,7 @@
 /* ================= ESTADO LOCAL (espelho do servidor) ================= */
 let estado=null, hist=null, MAPA={}, CATS=[];
 let papel="dono", rainOn=false, abaAtiva="mesas", mesaView="grid", alvoAtivo=null;
-let confirmaVenda=null, ocupado=false;
+let confirmaVenda=null, ocupado=false, acompPara=null;
 const NUM_MESAS=12;
 
 const brl=n=>Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -311,7 +311,7 @@ function diaSemanaISO(iso){const[a,m,d]=iso.split("-");return new Date(+a,+m-1,+
 function rotuloData(iso){const[a,m,d]=iso.split("-");return DIAS_SEM[diaSemanaISO(iso)]+" "+d+"/"+m;}
 function temTipo(key){return MAPA[key]&&MAPA[key].u==null;}
 function preco(key,tipo){const it=MAPA[key];if(!it)return 0;if(it.u!=null)return it.u;return tipo==="c"?it.c:it.s;}
-function nomeItem(it){const n=MAPA[it.key]?MAPA[it.key].nome:it.key;return n+(it.tipo?(it.tipo==="c"?" compl.":" simpl."):"");}
+function nomeItem(it){const n=MAPA[it.key]?MAPA[it.key].nome:it.key;let s=n+(it.tipo?(it.tipo==="c"?" compl.":" simpl."):"");if(it.acomp)s+=" ("+it.acomp+")";return s;}
 function somaItens(arr){return arr.reduce((a,it)=>a+preco(it.key,it.tipo||null),0);}
 function restante(key){return (estado.producao[key]||0)-(estado.vendidos[key]||0);}
 function esgotado(key){return (estado.producao[key]||0)>0 && restante(key)<=0;}
@@ -385,7 +385,7 @@ function renderMesas(){
   for(let i=1;i<=NUM_MESAS;i++){const a="mesa-"+i,it=ma[a]||[],oc=it.length>0;
     html+=`<button class="mesa ${oc?"ocupada":""}" data-alvo="${a}"><span class="nm">Mesa ${i}</span><span class="st">${oc?it.length+" itens":"livre"}</span><span class="vv">${oc?brl0(somaItens(it)):"—"}</span></button>`;}
   html+=`</div>`;grid.innerHTML=html;
-  grid.querySelectorAll(".mesa").forEach(el=>el.addEventListener("click",()=>{alvoAtivo=el.dataset.alvo;mesaView="detalhe";renderMesas();}));
+  grid.querySelectorAll(".mesa").forEach(el=>el.addEventListener("click",()=>{acompPara=null;alvoAtivo=el.dataset.alvo;mesaView="detalhe";renderMesas();}));
 }
 function renderDetalhe(){
   const det=document.getElementById("mesaDetalhe");const itens=(mesasAbertas()[alvoAtivo])||[];
@@ -395,10 +395,15 @@ function renderDetalhe(){
       const prod=estado.producao[it.key]||0,rest=restante(it.key),esg=esgotado(it.key);
       let c;if(esg)c=`<span class="cont esg">ESGOTADO</span>`;else if(prod>0&&rest<=3)c=`<span class="cont baixo">restam ${rest}</span>`;else if(prod>0)c=`<span class="cont">restam ${rest}</span>`;else c=`<span class="cont"></span>`;
       const dis=esg?"disabled":"";
-      const bt=temTipo(it.key)
-        ?`<button class="add" ${dis} data-k="${it.key}" data-t="s"><span class="t">SIMPLES</span><span class="p">${brl0(it.s)}</span></button><button class="add" ${dis} data-k="${it.key}" data-t="c"><span class="t">COMPLETO</span><span class="p">${brl0(it.c)}</span></button>`
-        :`<button class="add single" ${dis} data-k="${it.key}" data-t="u"><span class="p">+ ${brl0(it.u)}</span></button>`;
-      picker+=`<div class="item${esg?" esgotado":""}"><span class="nome">${it.nome}</span>${c}<div class="addbtns">${bt}</div></div>`;});
+      let bt;
+      if(!temTipo(it.key)){
+        bt=`<button class="add single" ${dis} data-k="${it.key}" data-t="u"><span class="p">+ ${brl0(it.u)}</span></button>`;
+      }else if(acompPara===it.key){
+        bt=`<button class="add" data-k="${it.key}" data-acomp="baião"><span class="t">BAIÃO</span></button><button class="add" data-k="${it.key}" data-acomp="arroz"><span class="t">ARROZ</span></button><button class="add cancel" data-cancel="1"><span class="t">✕</span></button>`;
+      }else{
+        bt=`<button class="add" ${dis} data-k="${it.key}" data-t="s"><span class="t">SIMPLES</span><span class="p">${brl0(it.s)}</span></button><button class="add" ${dis} data-k="${it.key}" data-t="c"><span class="t">COMPLETO</span><span class="p">${brl0(it.c)}</span></button>`;
+      }
+      picker+=`<div class="item${esg?" esgotado":""}${acompPara===it.key?" escolhendo":""}"><span class="nome">${it.nome}${acompPara===it.key?' <small style="color:var(--ember-soft)">baião ou arroz?</small>':''}</span>${acompPara===it.key?"":c}<div class="addbtns">${bt}</div></div>`;});
     picker+=`</div>`;});
   const total=somaItens(itens);
   const comanda=itens.length?itens.map((it,idx)=>`<div class="cl"><span class="nm">${nomeItem(it)}</span><span class="pr">${brl(preco(it.key,it.tipo||null))}</span><button class="rm" data-rm="${idx}" aria-label="remover">✕</button></div>`).join(""):`<div class="vazia">Nada lançado ainda. Toque nos itens abaixo.</div>`;
@@ -411,10 +416,17 @@ function renderDetalhe(){
       <button class="pagbtn" ${podeFechar} data-pag="Dinheiro"><span class="ic">💵</span>Dinheiro</button>
       <button class="pagbtn" ${podeFechar} data-pag="Cartão"><span class="ic">💳</span>Cartão</button>
       <button class="pagbtn" ${podeFechar} data-pag="Pix"><span class="ic">📱</span>Pix</button>
-    </div><div class="pagobs">Sem parcelamento nem taxa de maquininha no presencial.</div>${picker}`;
-  det.querySelector("#voltarMesas").addEventListener("click",()=>{mesaView="grid";alvoAtivo=null;renderMesas();});
-  det.querySelectorAll(".add").forEach(b=>b.addEventListener("click",()=>{if(esgotado(b.dataset.k))return;
-    acao("/api/mesa/item",{alvo:alvoAtivo,key:b.dataset.k,tipo:b.dataset.t==="u"?null:b.dataset.t});}));
+    </div><div class="pagobs">Sem parcelamento nem taxa de maquininha no presencial.</div>
+    ${itens.length?`<button class="btnsec" id="btnDesfazer">↩ Desfazer último item</button>`:""}${picker}`;
+  det.querySelector("#voltarMesas").addEventListener("click",()=>{acompPara=null;mesaView="grid";alvoAtivo=null;renderMesas();});
+  const bd2=det.querySelector("#btnDesfazer");
+  if(bd2)bd2.addEventListener("click",()=>{const n=itens.length;if(n>0)acao("/api/mesa/remove",{alvo:alvoAtivo,idx:n-1});});
+  det.querySelectorAll(".add").forEach(b=>b.addEventListener("click",()=>{
+    if(b.dataset.cancel){acompPara=null;renderDetalhe();return;}
+    if(b.dataset.acomp){const k=b.dataset.k;acompPara=null;acao("/api/mesa/item",{alvo:alvoAtivo,key:k,tipo:"c",acomp:b.dataset.acomp});return;}
+    const k=b.dataset.k;if(esgotado(k))return;
+    if(b.dataset.t==="c"){acompPara=k;renderDetalhe();return;} // completo: pergunta baião ou arroz
+    acao("/api/mesa/item",{alvo:alvoAtivo,key:k,tipo:b.dataset.t==="u"?null:b.dataset.t});}));
   det.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>acao("/api/mesa/remove",{alvo:alvoAtivo,idx:+b.dataset.rm})));
   det.querySelectorAll(".pagbtn").forEach(b=>b.addEventListener("click",()=>{if(!itens.length)return;
     const alvo=alvoAtivo;mesaView="grid";alvoAtivo=null;acao("/api/mesa/fechar",{alvo,pag:b.dataset.pag,rotulo:labelAlvo(alvo)});}));
