@@ -181,6 +181,15 @@
   .carditem .rm{background:transparent;border:1px solid var(--line);color:var(--crit);border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer;flex:0 0 auto}
   .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:16px;line-height:1.5}
   .vazio{color:var(--muted);text-align:center;padding:24px;font-style:italic;font-size:13px}
+  .printrow{display:flex;gap:8px;margin-top:10px}
+  .btnimp{flex:1;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:10px;padding:10px 6px;font-family:var(--f-body);font-weight:600;font-size:12px;cursor:pointer}
+  .btnimp:hover{border-color:var(--ember)}
+  #printArea{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printArea,#printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;left:0;top:0;width:100%;padding:10px;color:#000;background:#fff;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;white-space:pre-wrap;line-height:1.45}
+  }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   @media (max-width:400px){.fronts{grid-template-columns:1fr}}
 </style>
@@ -285,6 +294,7 @@
     </section>
   </main>
 </div>
+<div id="printArea"></div>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Figtree:wght@400;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <script>
 "use strict";
@@ -393,8 +403,10 @@ function renderDetalhe(){
   const total=somaItens(itens);
   const comanda=itens.length?itens.map((it,idx)=>`<div class="cl"><span class="nm">${nomeItem(it)}</span><span class="pr">${brl(preco(it.key,it.tipo||null))}</span><button class="rm" data-rm="${idx}" aria-label="remover">✕</button></div>`).join(""):`<div class="vazia">Nada lançado ainda. Toque nos itens abaixo.</div>`;
   const podeFechar=itens.length?"":"disabled";
+  const printbtns=itens.length?`<div class="printrow"><button class="btnimp" data-imp="cliente">🧾 Conferência do cliente</button><button class="btnimp" data-imp="cozinha">👨‍🍳 Enviar p/ cozinha</button></div>`:"";
   det.innerHTML=`<div class="dethead"><button class="btnvoltar" id="voltarMesas">‹ Mesas</button><h2>${labelAlvo(alvoAtivo)}</h2></div>
     <div class="comanda">${comanda}${itens.length?`<div class="comtot"><span class="l">Total da comanda</span><span class="v">${brl(total)}</span></div>`:""}</div>
+    ${printbtns}
     <div class="pagrow">
       <button class="pagbtn" ${podeFechar} data-pag="Dinheiro"><span class="ic">💵</span>Dinheiro</button>
       <button class="pagbtn" ${podeFechar} data-pag="Cartão"><span class="ic">💳</span>Cartão</button>
@@ -406,6 +418,36 @@ function renderDetalhe(){
   det.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>acao("/api/mesa/remove",{alvo:alvoAtivo,idx:+b.dataset.rm})));
   det.querySelectorAll(".pagbtn").forEach(b=>b.addEventListener("click",()=>{if(!itens.length)return;
     const alvo=alvoAtivo;mesaView="grid";alvoAtivo=null;acao("/api/mesa/fechar",{alvo,pag:b.dataset.pag,rotulo:labelAlvo(alvo)});}));
+  det.querySelectorAll(".btnimp").forEach(b=>b.addEventListener("click",()=>imprimirComanda(alvoAtivo,b.dataset.imp)));
+}
+
+/* ---- Impressão da comanda (conferência do cliente OU cozinha) ---- */
+const NOME_LOJA=(document.querySelector(".brand h1")?.textContent||"Churrasquinho do Paraná").trim();
+function imprimirComanda(alvo,tipo){
+  const itens=(mesasAbertas()[alvo])||[];
+  if(!itens.length)return;
+  // agrupa itens iguais (mesmo item + tipo)
+  const grupos={};
+  itens.forEach(it=>{const k=it.key+"|"+(it.tipo||"");if(!grupos[k])grupos[k]={it,q:0};grupos[k].q++;});
+  const d=new Date();
+  const dataHora=d.toLocaleDateString("pt-BR")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  const L=[];
+  L.push(NOME_LOJA.toUpperCase());
+  L.push("--------------------------------");
+  L.push((tipo==="cozinha"?"COZINHA":"CONFERENCIA DO CLIENTE")+" - "+labelAlvo(alvo));
+  L.push(dataHora);
+  L.push("--------------------------------");
+  let total=0;
+  Object.values(grupos).forEach(g=>{
+    const nome=nomeItem(g.it);
+    if(tipo==="cozinha"){ L.push(g.q+"x "+nome); }
+    else { const sub=preco(g.it.key,g.it.tipo||null)*g.q; total+=sub; L.push(g.q+"x "+nome+"  "+brl(sub)); }
+  });
+  if(tipo!=="cozinha"){ L.push("--------------------------------"); L.push("TOTAL: "+brl(total)); }
+  L.push("--------------------------------");
+  const area=document.getElementById("printArea");
+  area.textContent=L.join("\n");
+  window.print();
 }
 
 function renderProducao(){
