@@ -344,7 +344,7 @@ async function acao(rota,corpo){
 
 /* ================= ABAS / PAPÉIS ================= */
 const ABAS={mesas:"Mesas",producao:"Produção",cardapio:"Cardápio",fechamento:"Fechamento",entregas:"Entregas",historico:"Histórico"};
-const PERMISSOES={atendente:["mesas","fechamento"],dono:["mesas","producao","cardapio","fechamento","entregas","historico"],motoboy:["entregas"]};
+const PERMISSOES={atendente:["mesas","entregas","fechamento"],dono:["mesas","producao","cardapio","fechamento","entregas","historico"],motoboy:["entregas"]};
 const PANEIS=["mesas","producao","cardapio","fechamento","entregas","historico"];
 function montarAbas(){
   const vis=PERMISSOES[papel];if(!vis.includes(abaAtiva))abaAtiva=vis[0];
