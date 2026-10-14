@@ -7,6 +7,7 @@
 // ============================================================
 
 const express = require("express");
+const crypto = require("crypto");
 const { pensar, extrairCupom } = require("./cerebro");
 const bd = require("./db");
 
@@ -15,6 +16,46 @@ app.use(express.json());
 
 app.get("/", (_req, res) => res.send("Sistema no ar ✅ — painel em /painel.html"));
 app.use(express.static("public"));
+
+// ------------------------------------------------------------
+//  LOGIN — uma senha por função (dono / atendente / motoboy).
+//  As senhas ficam em variáveis de ambiente na Railway. Troque-as lá!
+// ------------------------------------------------------------
+const SENHAS = {
+  dono: process.env.SENHA_DONO || "dono123",
+  atendente: process.env.SENHA_ATENDENTE || "atendente123",
+  motoboy: process.env.SENHA_MOTOBOY || "motoboy123",
+};
+const SECRET = process.env.SESSION_SECRET || ("sq-" + SENHAS.dono + SENHAS.atendente);
+function tokenPara(role) {
+  const sig = crypto.createHmac("sha256", SECRET).update(role).digest("hex").slice(0, 24);
+  return role + "." + sig;
+}
+function roleDoToken(token) {
+  if (!token || typeof token !== "string" || token.indexOf(".") < 0) return null;
+  const role = token.split(".")[0];
+  return SENHAS[role] && tokenPara(role) === token ? role : null;
+}
+function papelDaReq(req) {
+  return roleDoToken(req.headers["x-token"] || (req.body && req.body._token) || req.query._token);
+}
+// Middleware: exige login e, se passar funções, exige uma delas.
+function exigir(...roles) {
+  return (req, res, next) => {
+    const p = papelDaReq(req);
+    if (!p) return res.status(401).json({ erro: "faça login" });
+    if (roles.length && !roles.includes(p)) return res.status(403).json({ erro: "sem permissão para isso" });
+    req.papel = p;
+    next();
+  };
+}
+
+app.post("/api/login", (req, res) => {
+  const senha = String((req.body || {}).senha || "");
+  const role = Object.keys(SENHAS).find((r) => SENHAS[r] && senha === SENHAS[r]);
+  if (!role) return res.status(401).json({ erro: "senha incorreta" });
+  res.json({ role, token: tokenPara(role) });
+});
 
 // ------------------------------------------------------------
 //  API DO PAINEL
@@ -30,13 +71,13 @@ function responderEstado(res, data) {
 }
 
 // Estado completo do dia
-app.get("/api/estado", (req, res) => {
+app.get("/api/estado", exigir("dono", "atendente", "motoboy"), (req, res) => {
   try { responderEstado(res, dataPedido(req)); }
   catch (e) { res.status(500).json({ erro: String(e.message || e) }); }
 });
 
 // Lançar item numa mesa/balcão
-app.post("/api/mesa/item", (req, res) => {
+app.post("/api/mesa/item", exigir("dono", "atendente"), (req, res) => {
   try {
     const data = dataPedido(req);
     const { alvo, key, tipo, acomp } = req.body || {};
@@ -46,7 +87,7 @@ app.post("/api/mesa/item", (req, res) => {
 });
 
 // Remover item da comanda (por posição)
-app.post("/api/mesa/remove", (req, res) => {
+app.post("/api/mesa/remove", exigir("dono", "atendente"), (req, res) => {
   try {
     const data = dataPedido(req);
     const { alvo, idx } = req.body || {};
@@ -56,7 +97,7 @@ app.post("/api/mesa/remove", (req, res) => {
 });
 
 // Fechar comanda com forma de pagamento
-app.post("/api/mesa/fechar", (req, res) => {
+app.post("/api/mesa/fechar", exigir("dono", "atendente"), (req, res) => {
   try {
     const data = dataPedido(req);
     const { alvo, pag, rotulo } = req.body || {};
@@ -67,7 +108,7 @@ app.post("/api/mesa/fechar", (req, res) => {
 });
 
 // Ajustar produção de um item
-app.post("/api/producao", (req, res) => {
+app.post("/api/producao", exigir("dono"), (req, res) => {
   try {
     const data = dataPedido(req);
     const { key, qtd } = req.body || {};
@@ -77,17 +118,17 @@ app.post("/api/producao", (req, res) => {
 });
 
 // Cardápio: criar/editar e remover item (depois fica só pro dono, com login)
-app.post("/api/menu/salvar", (req, res) => {
+app.post("/api/menu/salvar", exigir("dono"), (req, res) => {
   try { const data = dataPedido(req); bd.salvarItemMenu(req.body || {}); responderEstado(res, data); }
   catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
-app.post("/api/menu/remover", (req, res) => {
+app.post("/api/menu/remover", exigir("dono"), (req, res) => {
   try { const data = dataPedido(req); bd.removerItemMenu((req.body || {}).key); responderEstado(res, data); }
   catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
 
 // Motoboy marca o pedido como "saiu" ou "entregue"
-app.post("/api/pedido/status", (req, res) => {
+app.post("/api/pedido/status", exigir("dono", "atendente", "motoboy"), (req, res) => {
   try {
     const data = dataPedido(req);
     const { id, status } = req.body || {};
@@ -97,17 +138,17 @@ app.post("/api/pedido/status", (req, res) => {
 });
 
 // Histórico (últimos N dias) pro painel do dono
-app.get("/api/historico", (req, res) => {
+app.get("/api/historico", exigir("dono"), (req, res) => {
   try { res.json({ dias: bd.historico(Number(req.query.dias) || 7) }); }
   catch (e) { res.status(500).json({ erro: String(e.message || e) }); }
 });
 
 // Abrir / fechar caixa
-app.post("/api/caixa/abrir", (req, res) => {
+app.post("/api/caixa/abrir", exigir("dono", "atendente"), (req, res) => {
   try { const data = dataPedido(req); bd.abrirCaixa(data, (req.body || {}).fundo); responderEstado(res, data); }
   catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
-app.post("/api/caixa/fechar", (req, res) => {
+app.post("/api/caixa/fechar", exigir("dono", "atendente"), (req, res) => {
   try { const data = dataPedido(req); const b = req.body || {}; bd.fecharCaixa(data, b.nome, b.contado); responderEstado(res, data); }
   catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
