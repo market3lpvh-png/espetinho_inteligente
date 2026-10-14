@@ -21,8 +21,9 @@ function montarRegrasEntrega() {
 ENTREGA (delivery) — a taxa é paga ao entregador e só INFORMADA ao cliente.
 Tabela de taxa por bairro:
 ${linhas}
-  - Bairro atendido mas fora desta lista: R$${e.taxaBairroNovo},00.
-  - Se o cliente der um endereço que você não reconhece como nenhum bairro acima, pergunte o nome do bairro antes de dizer a taxa. Nunca invente.
+  - Bairro atendido mas FORA desta lista (bairro novo): R$${e.taxaBairroNovo},00.
+  - SEMPRE confirme o bairro antes de cobrar a taxa. Se o nome for PARECIDO mas não idêntico a um da lista (ex.: "Santa Bárbara" NÃO é o mesmo que "Condomínio Santa Bárbara"), pergunte ao cliente qual é exatamente — nunca assuma que é o parecido.
+  - Se o bairro não estiver na lista, trate como bairro novo (R$${e.taxaBairroNovo},00), confirmando o nome com o cliente. Nunca invente taxa.
 
 Acréscimos sobre a taxa do bairro:
   - CARTÃO (maquininha): +R$${e.acrescimoCartao},00, EXCETO nos bairros ${e.isentosCartao.join(", ")} (nesses não acrescenta).
@@ -74,7 +75,7 @@ E logo DEPOIS do cupom, inclua TAMBÉM este bloco de dados (o cliente não vê),
 [[/PEDIDO]]
 Regras do bloco PEDIDO: "tipo" é "entrega" ou "retirada"; em retirada, bairro/endereco/taxa ficam null/0. Use os NOMES EXATOS do cardápio em "itens". "tipo" do item é "simples" ou "completo" (vazio para porções/bebidas). "acomp" é "baião" ou "arroz" só quando completo. "taxa" é o número da taxa de entrega. O JSON precisa ser válido.
 
-Antes da confirmação final, NUNCA emita os blocos [[CUPOM]] nem [[PEDIDO]].`;
+SEMPRE emita os DOIS blocos juntos no fechamento (primeiro [[CUPOM]], logo depois [[PEDIDO]]) — nunca um sem o outro. Antes da confirmação final, NUNCA emita nenhum dos dois.`;
 }
 
 async function pensar(historico) {
