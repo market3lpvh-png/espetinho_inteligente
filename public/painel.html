@@ -42,6 +42,16 @@
   .rainbtn[aria-pressed="true"] .dot{background:var(--rain);box-shadow:0 0 0 3px rgba(90,169,224,.25)}
   .conn{width:100%;font-size:10px;color:var(--muted);line-height:1.35}
   .conn.erro{color:var(--crit)}
+  .btnsair{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:6px 12px;font-family:var(--f-body);font-size:12px;font-weight:600;cursor:pointer}
+  .btnsair:hover{border-color:var(--crit);color:var(--crit)}
+  .logintela{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+  .logincard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px 22px;width:100%;max-width:340px;text-align:center}
+  .logincard h2{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.5px;font-size:18px;margin:0 0 4px}
+  .logincard p{font-size:13px;color:var(--muted);margin:0 0 18px}
+  .logincard input{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:13px;color:var(--fg);font-size:16px;outline:none;text-align:center;letter-spacing:1px}
+  .logincard input:focus{border-color:var(--ember)}
+  .logincard .bigbtn{margin-top:12px}
+  .loginerr{color:var(--crit);font-size:12px;margin-top:10px;min-height:16px}
 
   nav.tabs{display:flex;gap:4px;padding:8px var(--gut) 0;background:var(--bg);position:sticky;top:0;z-index:15;flex-wrap:wrap}
   nav.tabs button{flex:1;min-width:72px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--f-body);font-size:13px;font-weight:600;padding:9px 2px 10px;cursor:pointer}
@@ -195,7 +205,17 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="logintela" id="loginTela" hidden>
+  <div class="logincard">
+    <div class="flame" style="width:48px;height:48px;font-size:24px;margin:0 auto 12px">🔥</div>
+    <h2>Churrasquinho do Paraná</h2>
+    <p>Entre com a senha da sua função</p>
+    <input id="loginSenha" type="password" inputmode="text" placeholder="Senha" aria-label="Senha" autocomplete="current-password">
+    <button class="bigbtn fechar" id="loginBtn">Entrar</button>
+    <div class="loginerr" id="loginErr"></div>
+  </div>
+</div>
+<div class="wrap" id="appWrap" hidden>
   <header>
     <div class="brandrow">
       <div class="flame">🔥</div>
@@ -205,12 +225,8 @@
         <div class="date" id="dataHoje">—</div></div>
     </div>
     <div class="controls">
-      <span class="rolelbl">Ver como:</span>
-      <div class="roleseg" id="roleSeg">
-        <button data-role="atendente">Atendente</button>
-        <button data-role="dono" aria-pressed="true">Dono</button>
-        <button data-role="motoboy">Motoboy</button>
-      </div>
+      <span class="rolelbl" id="papelLabel">—</span>
+      <button class="btnsair" id="btnSair">Sair</button>
       <button class="rainbtn" id="rainBtn" aria-pressed="false"><span class="dot"></span><span id="rainLbl">Chuva: off</span></button>
       <div class="conn" id="conn">Conectando ao sistema…</div>
     </div>
@@ -300,7 +316,7 @@
 "use strict";
 /* ================= ESTADO LOCAL (espelho do servidor) ================= */
 let estado=null, hist=null, MAPA={}, CATS=[];
-let papel="dono", rainOn=false, abaAtiva="mesas", mesaView="grid", alvoAtivo=null;
+let papel=null, token=null, rainOn=false, abaAtiva="mesas", mesaView="grid", alvoAtivo=null;
 let confirmaVenda=null, ocupado=false, acompPara=null;
 const NUM_MESAS=12;
 
@@ -319,26 +335,31 @@ function esgotado(key){return (estado.producao[key]||0)>0 && restante(key)<=0;}
 /* ================= COMUNICAÇÃO COM O SERVIDOR ================= */
 function conn(txt,erro){const e=document.getElementById("conn");e.textContent=txt;e.className="conn"+(erro?" erro":"");}
 async function api(rota,corpo){
-  const r=await fetch(rota,corpo?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(corpo)}:undefined);
+  const headers={};if(token)headers["x-token"]=token;
+  let opt;
+  if(corpo){opt={method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify(corpo)};}
+  else{opt={headers};}
+  const r=await fetch(rota,opt);
+  if(r.status===401){logout();throw new Error("sessão expirada");}
   const j=await r.json();
   if(!r.ok||j.erro)throw new Error(j.erro||("erro "+r.status));
   return j;
 }
 async function carregar(){
   try{
-    const [e,h]=await Promise.all([api("/api/estado"),api("/api/historico?dias=7")]);
-    estado=e;hist=h.dias;
+    estado=await api("/api/estado");
+    if(papel==="dono"){try{hist=(await api("/api/historico?dias=7")).dias;}catch(e){}}
     if(!Object.keys(MAPA).length){MAPA=Object.fromEntries(estado.menu.map(i=>[i.key,i]));CATS=[...new Set(estado.menu.map(i=>i.cat))];}
     conn("● conectado · atualiza sozinho");
     renderTudo();
-  }catch(err){conn("⚠ sem conexão com o sistema — tentando de novo…",true);}
+  }catch(err){if(String(err.message).indexOf("sessão")>=0)return;conn("⚠ sem conexão com o sistema — tentando de novo…",true);}
 }
 async function acao(rota,corpo){
   if(ocupado)return;ocupado=true;
   try{const j=await api(rota,corpo);estado=j;if(j.confirmacao)confirmaVenda=j.confirmacao;
-    try{hist=(await api("/api/historico?dias=7")).dias;}catch(e){}
+    if(papel==="dono"){try{hist=(await api("/api/historico?dias=7")).dias;}catch(e){}}
     conn("● conectado · atualiza sozinho");renderTudo();
-  }catch(err){conn("⚠ "+err.message,true);}
+  }catch(err){if(String(err.message).indexOf("sessão")<0)conn("⚠ "+err.message,true);}
   finally{ocupado=false;}
 }
 
@@ -647,15 +668,48 @@ document.getElementById("btnConfirmaAbrir").addEventListener("click",()=>{
 document.getElementById("rainBtn").addEventListener("click",()=>{rainOn=!rainOn;const b=document.getElementById("rainBtn");
   b.setAttribute("aria-pressed",rainOn?"true":"false");document.getElementById("rainLbl").textContent="Chuva: "+(rainOn?"on":"off");
   document.getElementById("rainFlag").classList.toggle("on",rainOn);});
-document.querySelectorAll('#roleSeg button').forEach(b=>b.addEventListener("click",()=>{papel=b.dataset.role;
-  document.querySelectorAll('#roleSeg button').forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));
-  if(abaAtiva==="mesas"){mesaView="grid";alvoAtivo=null;}montarAbas();mostrarAba();}));
+/* ================= LOGIN / LOGOUT ================= */
+const NOMES_PAPEL={dono:"Dono",atendente:"Atendente",motoboy:"Motoboy"};
+function mostrarLogin(){
+  document.getElementById("loginTela").hidden=false;
+  document.getElementById("appWrap").hidden=true;
+  setTimeout(()=>{const i=document.getElementById("loginSenha");if(i)i.focus();},50);
+}
+function entrarNoApp(){
+  document.getElementById("loginTela").hidden=true;
+  document.getElementById("appWrap").hidden=false;
+  document.getElementById("papelLabel").textContent=NOMES_PAPEL[papel]||papel;
+  abaAtiva="mesas";mesaView="grid";alvoAtivo=null;
+  montarAbas();mostrarAba();carregar();
+}
+function logout(){
+  token=null;papel=null;
+  try{localStorage.removeItem("espeti_token");localStorage.removeItem("espeti_papel");}catch(e){}
+  mostrarLogin();
+}
+async function fazerLogin(){
+  const senha=document.getElementById("loginSenha").value;
+  if(!senha){document.getElementById("loginSenha").focus();return;}
+  try{
+    const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({senha})});
+    const j=await r.json();
+    if(!r.ok||j.erro){document.getElementById("loginErr").textContent="Senha incorreta.";return;}
+    token=j.token;papel=j.role;
+    try{localStorage.setItem("espeti_token",token);localStorage.setItem("espeti_papel",papel);}catch(e){}
+    document.getElementById("loginSenha").value="";document.getElementById("loginErr").textContent="";
+    entrarNoApp();
+  }catch(e){document.getElementById("loginErr").textContent="Falha ao entrar. Tente de novo.";}
+}
+document.getElementById("loginBtn").addEventListener("click",fazerLogin);
+document.getElementById("loginSenha").addEventListener("keydown",e=>{if(e.key==="Enter")fazerLogin();});
+document.getElementById("btnSair").addEventListener("click",logout);
 
 /* ================= INÍCIO + SINCRONIZAÇÃO ================= */
 setupCardapioForm();
-montarAbas();
-carregar();
+try{const t=localStorage.getItem("espeti_token"),p=localStorage.getItem("espeti_papel");if(t&&p&&NOMES_PAPEL[p]){token=t;papel=p;}}catch(e){}
+if(token&&papel)entrarNoApp();else mostrarLogin();
 setInterval(()=>{
+  if(!token)return;
   const digitando=document.activeElement && document.activeElement.tagName==="INPUT";
   if(!ocupado && !digitando && !(abaAtiva==="mesas"&&mesaView==="detalhe")) carregar();
 },5000);
