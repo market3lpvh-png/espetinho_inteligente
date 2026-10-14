@@ -23,6 +23,7 @@ module.exports = {
       "Mato Grosso": 8,
       "Tucumanzal": 8,
       "Mocambo": 8,
+      "Santa Bárbara": 8,
       "Embratel": 12,
       "Três Marias": 15,
       "Flodoaldo Pontes Pinto": 13,
@@ -35,14 +36,18 @@ module.exports = {
       "Cai n'água": 10,
       "Castanheira": 15,
       "Aponiã": 15,
+      "Bairro Novo": 25,
     },
 
-    // Bairro atendido mas que não está na lista acima.
-    taxaBairroNovo: 25,
+    // Taxa para endereço cujo bairro NÃO está na lista acima (não cadastrado).
+    // OBS: "Bairro Novo" é um bairro de verdade; se vocês atenderem lá, cadastre-o
+    // na lista com a taxa certa. Esta taxa aqui é só o valor para lugares que
+    // ainda não estão na tabela.
+    taxaNaoListado: 25,
 
     // +R$2 quando o cliente paga NA MAQUININHA (cartão), menos nestes bairros perto:
     acrescimoCartao: 2,
-    isentosCartao: ["Areal", "Mato Grosso", "Tucumanzal", "Mocambo"],
+    isentosCartao: ["Areal", "Mato Grosso", "Tucumanzal", "Mocambo", "Santa Bárbara"],
 
     // +R$2 em dia de chuva, em TODOS os bairros sem exceção.
     // Ligado/desligado pela variável de ambiente MODO_CHUVA ("1" = chovendo).

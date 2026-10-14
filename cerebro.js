@@ -21,9 +21,9 @@ function montarRegrasEntrega() {
 ENTREGA (delivery) — a taxa é paga ao entregador e só INFORMADA ao cliente.
 Tabela de taxa por bairro:
 ${linhas}
-  - Bairro atendido mas FORA desta lista (bairro novo): R$${e.taxaBairroNovo},00.
+  - Bairro que NÃO está na lista acima (não cadastrado): R$${e.taxaNaoListado},00. (Atenção: "Bairro Novo" é um bairro de verdade — se ele estiver na lista, cobre o valor da lista; "não cadastrado" é só um lugar que ainda não aparece na tabela.)
   - SEMPRE confirme o bairro antes de cobrar a taxa. Se o nome for PARECIDO mas não idêntico a um da lista (ex.: "Santa Bárbara" NÃO é o mesmo que "Condomínio Santa Bárbara"), pergunte ao cliente qual é exatamente — nunca assuma que é o parecido.
-  - Se o bairro não estiver na lista, trate como bairro novo (R$${e.taxaBairroNovo},00), confirmando o nome com o cliente. Nunca invente taxa.
+  - Se o bairro não estiver na lista, confirme o nome com o cliente e aplique a taxa de não cadastrado (R$${e.taxaNaoListado},00). Nunca invente taxa.
 
 Acréscimos sobre a taxa do bairro:
   - CARTÃO (maquininha): +R$${e.acrescimoCartao},00, EXCETO nos bairros ${e.isentosCartao.join(", ")} (nesses não acrescenta).
