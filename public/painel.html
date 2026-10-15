@@ -48,8 +48,11 @@
   .logincard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px 22px;width:100%;max-width:340px;text-align:center}
   .logincard h2{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.5px;font-size:18px;margin:0 0 4px}
   .logincard p{font-size:13px;color:var(--muted);margin:0 0 18px}
-  .logincard input{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:13px;color:var(--fg);font-size:16px;outline:none;text-align:center;letter-spacing:1px}
+  .logincard input{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:13px 44px;color:var(--fg);font-size:16px;outline:none;text-align:center;letter-spacing:1px}
   .logincard input:focus{border-color:var(--ember)}
+  .senhawrap{position:relative}
+  .olho{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;font-size:18px;opacity:.65;padding:6px}
+  .olho:hover{opacity:1}
   .logincard .bigbtn{margin-top:12px}
   .loginerr{color:var(--crit);font-size:12px;margin-top:10px;min-height:16px}
 
@@ -210,7 +213,10 @@
     <div class="flame" style="width:48px;height:48px;font-size:24px;margin:0 auto 12px">🔥</div>
     <h2>Churrasquinho do Paraná</h2>
     <p>Entre com a senha da sua função</p>
-    <input id="loginSenha" type="password" inputmode="text" placeholder="Senha" aria-label="Senha" autocomplete="current-password">
+    <div class="senhawrap">
+      <input id="loginSenha" type="password" inputmode="text" placeholder="Senha" aria-label="Senha" autocomplete="current-password">
+      <button type="button" class="olho" id="olhoBtn" aria-label="mostrar senha">👁</button>
+    </div>
     <button class="bigbtn fechar" id="loginBtn">Entrar</button>
     <div class="loginerr" id="loginErr"></div>
   </div>
@@ -688,7 +694,7 @@ function logout(){
   mostrarLogin();
 }
 async function fazerLogin(){
-  const senha=document.getElementById("loginSenha").value;
+  const senha=document.getElementById("loginSenha").value.trim();
   if(!senha){document.getElementById("loginSenha").focus();return;}
   try{
     const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({senha})});
@@ -702,6 +708,11 @@ async function fazerLogin(){
 }
 document.getElementById("loginBtn").addEventListener("click",fazerLogin);
 document.getElementById("loginSenha").addEventListener("keydown",e=>{if(e.key==="Enter")fazerLogin();});
+document.getElementById("olhoBtn").addEventListener("click",()=>{
+  const i=document.getElementById("loginSenha"),b=document.getElementById("olhoBtn");
+  if(i.type==="password"){i.type="text";b.textContent="🙈";}else{i.type="password";b.textContent="👁";}
+  i.focus();
+});
 document.getElementById("btnSair").addEventListener("click",logout);
 
 /* ================= INÍCIO + SINCRONIZAÇÃO ================= */
