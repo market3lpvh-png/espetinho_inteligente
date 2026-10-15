@@ -51,7 +51,7 @@ function exigir(...roles) {
 }
 
 app.post("/api/login", (req, res) => {
-  const senha = String((req.body || {}).senha || "");
+  const senha = String((req.body || {}).senha || "").trim();
   const role = Object.keys(SENHAS).find((r) => SENHAS[r] && senha === SENHAS[r]);
   if (!role) return res.status(401).json({ erro: "senha incorreta" });
   res.json({ role, token: tokenPara(role) });
