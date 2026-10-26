@@ -164,6 +164,7 @@
   .ped .stbadge.preparo{background:var(--surface-2);color:var(--muted)} .ped .stbadge.saindo{background:rgba(90,169,224,.16);color:var(--rain)} .ped .stbadge.entregue{background:rgba(91,191,134,.16);color:var(--ok)}
   /* ---- Observações por prato (chips) ---- */
   .obsmini{display:block;font-size:11px;color:var(--warn);margin-top:2px;font-weight:600}
+  .jacoz{display:inline-block;font-size:10px;color:var(--ok);margin-top:2px;font-weight:700;letter-spacing:.2px}
   .obschip{display:inline-block;margin:3px 4px 0 0;font-family:var(--f-mono);font-size:10px;font-weight:700;color:#160f08;background:var(--warn);padding:1px 7px;border-radius:5px}
   .cl .obsbtn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:7px;font-size:13px;cursor:pointer;padding:3px 7px;line-height:1;flex:0 0 auto}
   .cl .obsbtn.tem{border-color:var(--warn);color:var(--warn)}
@@ -470,9 +471,10 @@ function renderDetalhe(){
   const total=somaItens(itens);
   const comanda=itens.length?itens.map((it,idx)=>{
     const mini=(it.obs&&it.obs.length)?`<small class="obsmini">↳ ${it.obs.join(" · ")}</small>`:"";
+    const jacoz=it._enviado?`<small class="jacoz">✓ na cozinha</small>`:"";
     const editing=obsEditIdx===idx;
     const chips=editing?`<div class="obsline">${OBS_TAGS.map(t=>`<button class="tagbtn ${(it.obs||[]).includes(t)?"on":""}" data-obsidx="${idx}" data-tag="${t}">${t}</button>`).join("")}<button class="okobs" data-okobs="1">pronto ✓</button></div>`:"";
-    return `<div class="cl"><span class="nm">${nomeItem(it)}${mini}</span><span class="pr">${brl(preco(it.key,it.tipo||null))}</span><button class="obsbtn ${(it.obs&&it.obs.length)?"tem":""}" data-obsedit="${idx}" aria-label="observação">📝</button><button class="rm" data-rm="${idx}" aria-label="remover">✕</button></div>${chips}`;
+    return `<div class="cl"><span class="nm">${nomeItem(it)}${mini}${jacoz}</span><span class="pr">${brl(preco(it.key,it.tipo||null))}</span><button class="obsbtn ${(it.obs&&it.obs.length)?"tem":""}" data-obsedit="${idx}" aria-label="observação">📝</button><button class="rm" data-rm="${idx}" aria-label="remover">✕</button></div>${chips}`;
   }).join(""):`<div class="vazia">Nada lançado ainda. Toque nos itens abaixo.</div>`;
   const podeFechar=itens.length?"":"disabled";
   const printbtns=itens.length?`<div class="printrow"><button class="btnimp" data-imp="cliente">🧾 Conferência do cliente</button><button class="btnimp" data-imp="cozinha">👨‍🍳 Enviar p/ cozinha</button></div>`:"";
