@@ -131,7 +131,7 @@ function garantirDia(data) {
     store.dias[data] = {
       // o dia começa com o caixa FECHADO: a 1ª ação é "Abrir caixa" e informar o fundo de troco
       caixa: { aberto: false, horaAbriu: null, fechadoPor: null, horaFechou: null, fundoAbertura: 0, valorContado: null },
-      producao, mesas: {}, vendas: [], pedidosZap: [], _seq: 0,
+      producao, mesas: {}, vendas: [], pedidosZap: [], ticketsMesa: [], _seq: 0,
     };
     salvar();
   }
@@ -139,6 +139,7 @@ function garantirDia(data) {
   const d = store.dias[data];
   let mudou = false;
   menu().forEach((it) => { if (d.producao[it.key] == null) { d.producao[it.key] = 0; mudou = true; } });
+  if (!Array.isArray(d.ticketsMesa)) { d.ticketsMesa = []; mudou = true; } // comandas enviadas pra cozinha
   if (mudou) salvar();
   return d;
 }
@@ -152,6 +153,7 @@ function estadoDoDia(data) {
     mesas: JSON.parse(JSON.stringify(d.mesas)),
     vendas: d.vendas.map((v) => ({ id: v.id, alvo: v.alvo, itens: v.itens, total: v.total, pag: v.pag, hora: v.hora })),
     pedidosZap: d.pedidosZap.map((p) => ({ id: p.id, tipo: p.tipo, bairro: p.bairro, end: p.end, pag: p.pag, troco: p.troco || null, itens: p.itens, taxa: p.taxa, status: p.status, cozinha: p.cozinha || "preparo", hora: p.hora })),
+    ticketsMesa: (d.ticketsMesa || []).map((t) => ({ id: t.id, alvo: t.alvo, itens: t.itens, hora: t.hora, cozinha: t.cozinha || "preparo" })),
     vendidos: vendidos(data),
     menu: menu(),
   };
@@ -295,10 +297,28 @@ function setStatusPedido(data, id, status) {
   salvar();
   return p;
 }
-// Marca o pedido como PRONTO na cozinha (some do quadro) ou devolve pra fila.
+// Envia a comanda de uma mesa/balcão pra COZINHA: cria um ticket (foto dos itens de agora).
+function enviarCozinhaMesa(data, alvo, rotulo) {
+  const d = garantirDia(data);
+  const itens = d.mesas[alvo] || [];
+  if (!itens.length) throw new Error("comanda vazia");
+  d._seqMesaCoz = (d._seqMesaCoz || 0) + 1;
+  const ticket = {
+    id: "M-" + String(10 + d._seqMesaCoz),
+    alvo: rotulo || alvo,
+    itens: JSON.parse(JSON.stringify(itens)), // foto do momento (não muda se a comanda mudar depois)
+    hora: hhmm(),
+    cozinha: "preparo",
+  };
+  d.ticketsMesa.push(ticket);
+  salvar();
+  return ticket;
+}
+// Marca um pedido PRONTO na cozinha (some do quadro). Vale pro WhatsApp (W-) e pras mesas (M-).
 function setCozinhaPedido(data, id, estadoCozinha) {
   const d = garantirDia(data);
-  const p = d.pedidosZap.find((x) => x.id === id);
+  let p = d.pedidosZap.find((x) => x.id === id);
+  if (!p && Array.isArray(d.ticketsMesa)) p = d.ticketsMesa.find((x) => x.id === id);
   if (!p) throw new Error("pedido não encontrado");
   p.cozinha = estadoCozinha === "pronto" ? "pronto" : "preparo";
   salvar();
@@ -332,6 +352,6 @@ module.exports = {
   salvarItemMenu, removerItemMenu,
   hojeData, estadoDoDia, vendidos, restante, esgotado,
   addItemMesa, removeItemMesa, setObsItemMesa, fecharMesa, setProducao, abrirCaixa, fecharCaixa,
-  addPedidoZap, setStatusPedido, setCozinhaPedido,
+  addPedidoZap, setStatusPedido, setCozinhaPedido, enviarCozinhaMesa,
   garantirDia, historico,
 };

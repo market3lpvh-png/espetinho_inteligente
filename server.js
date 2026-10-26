@@ -106,6 +106,16 @@ app.post("/api/mesa/obs", exigir("dono", "atendente"), (req, res) => {
   } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
 
+// Enviar a comanda da mesa/balcão para a COZINHA (vira ticket no quadro)
+app.post("/api/mesa/cozinha", exigir("dono", "atendente"), (req, res) => {
+  try {
+    const data = dataPedido(req);
+    const { alvo, rotulo } = req.body || {};
+    bd.enviarCozinhaMesa(data, alvo, rotulo || alvo);
+    responderEstado(res, data);
+  } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
+});
+
 // Fechar comanda com forma de pagamento
 app.post("/api/mesa/fechar", exigir("dono", "atendente"), (req, res) => {
   try {
