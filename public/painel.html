@@ -476,6 +476,7 @@ function renderDetalhe(){
   const podeFechar=itens.length?"":"disabled";
   const printbtns=itens.length?`<div class="printrow"><button class="btnimp" data-imp="cliente">🧾 Conferência do cliente</button><button class="btnimp" data-imp="cozinha">👨‍🍳 Enviar p/ cozinha</button></div>`:"";
   det.innerHTML=`<div class="dethead"><button class="btnvoltar" id="voltarMesas">‹ Mesas</button><h2>${labelAlvo(alvoAtivo)}</h2></div>
+    ${avisoCozinha?`<div class="vendaok" id="avisoCoz">✓ ${avisoCozinha} enviada pra cozinha</div>`:""}
     <div class="comanda">${comanda}${itens.length?`<div class="comtot"><span class="l">Total da comanda</span><span class="v">${brl(total)}</span></div>`:""}</div>
     ${printbtns}
     <div class="pagrow">
@@ -485,6 +486,7 @@ function renderDetalhe(){
     </div><div class="pagobs">Sem parcelamento nem taxa de maquininha no presencial.</div>
     ${itens.length?`<button class="btnsec" id="btnDesfazer">↩ Desfazer último item</button>`:""}${picker}`;
   det.querySelector("#voltarMesas").addEventListener("click",()=>{acompPara=null;obsEditIdx=null;mesaView="grid";alvoAtivo=null;renderMesas();});
+  if(avisoCozinha){avisoCozinha=null;setTimeout(()=>{const e=document.getElementById("avisoCoz");if(e)e.style.opacity="0";},2600);}
   const bd2=det.querySelector("#btnDesfazer");
   if(bd2)bd2.addEventListener("click",()=>{const n=itens.length;if(n>0)acao("/api/mesa/remove",{alvo:alvoAtivo,idx:n-1});});
   det.querySelectorAll(".add").forEach(b=>b.addEventListener("click",()=>{
@@ -503,7 +505,10 @@ function renderDetalhe(){
   }));
   det.querySelectorAll(".pagbtn").forEach(b=>b.addEventListener("click",()=>{if(!itens.length)return;
     const alvo=alvoAtivo;mesaView="grid";alvoAtivo=null;acao("/api/mesa/fechar",{alvo,pag:b.dataset.pag,rotulo:labelAlvo(alvo)});}));
-  det.querySelectorAll(".btnimp").forEach(b=>b.addEventListener("click",()=>imprimirComanda(alvoAtivo,b.dataset.imp)));
+  det.querySelectorAll(".btnimp").forEach(b=>b.addEventListener("click",()=>{
+    if(b.dataset.imp==="cozinha"){avisoCozinha=labelAlvo(alvoAtivo);acao("/api/mesa/cozinha",{alvo:alvoAtivo,rotulo:labelAlvo(alvoAtivo)});}
+    else imprimirComanda(alvoAtivo,b.dataset.imp);
+  }));
 }
 
 /* ---- Impressão da comanda (conferência do cliente OU cozinha) ---- */
