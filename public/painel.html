@@ -177,6 +177,7 @@
   .tkt.ent{border-color:rgba(224,165,58,.5)}
   .tkt .th{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--surface-2)}
   .tkt .th .id{font-family:var(--f-mono);font-weight:600;font-size:13px}
+  .tkt .th .id.mesanome{font-family:var(--f-display);font-size:17px;letter-spacing:.4px;color:var(--ok);text-transform:uppercase}
   .tkt .th .tag{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:999px}
   .tkt .th .tag.ret{background:rgba(236,122,44,.16);color:var(--ember-soft)} .tkt .th .tag.ent{background:rgba(224,165,58,.18);color:var(--warn)}
   .tkt .th .tag.mesa{background:rgba(91,191,134,.16);color:var(--ok)}
@@ -705,8 +706,9 @@ function renderCozinha(){
     return;
   }
   cont.innerHTML=`<div class="kds">`+fila.map(p=>{
-    const tag=p._fonte==="mesa"?`<span class="tag mesa">${p.alvo}</span>`
-      :(p.tipo==="entrega"?`<span class="tag ent">Entrega</span>`:`<span class="tag ret">Retirada</span>`);
+    const ehMesa=p._fonte==="mesa";
+    // na mesa, o nome já é a identificação (nada de código M-); no WhatsApp mostra Entrega/Retirada
+    const tag=ehMesa?"":(p.tipo==="entrega"?`<span class="tag ent">Entrega</span>`:`<span class="tag ret">Retirada</span>`);
     // agrupa itens iguais (mesmo item + tipo + acomp + observações)
     const grupos={};
     p.itens.forEach(it=>{const k=it.key+"|"+(it.tipo||"")+"|"+(it.acomp||"")+"|"+((it.obs||[]).join(","));if(!grupos[k])grupos[k]={it,q:0};grupos[k].q++;});
@@ -718,7 +720,8 @@ function renderCozinha(){
       return `<div class="it"><div class="q">${g.q}× ${nome}</div>${sub.length?`<div class="subl">${sub.join(" · ")}</div>`:""}${chips}</div>`;
     }).join("");
     const rodape=p._fonte==="mesa"?p.hora:(p.hora+(p.bairro?" · "+p.bairro:""));
-    return `<div class="tkt ${p._fonte==="mesa"?"mesa":(p.tipo==="entrega"?"ent":"")}"><div class="th"><span class="id">${p.id}</span>${tag}</div>
+    const idLabel=ehMesa?p.alvo:p.id;
+    return `<div class="tkt ${ehMesa?"mesa":(p.tipo==="entrega"?"ent":"")}"><div class="th"><span class="id${ehMesa?" mesanome":""}">${idLabel}</span>${tag}</div>
       <div class="ti">${itensHtml}<span class="hr">${rodape}</span></div>
       <button class="pronto" data-pronto="${p.id}">Pronto ✓</button></div>`;
   }).join("")+`</div>`;
