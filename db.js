@@ -297,20 +297,23 @@ function setStatusPedido(data, id, status) {
   salvar();
   return p;
 }
-// Envia a comanda de uma mesa/balcão pra COZINHA: cria um ticket (foto dos itens de agora).
+// Envia pra COZINHA só os itens AINDA NÃO enviados da comanda (cada envio é uma "rodada").
+// Assim nunca repete item já mandado — a cozinha não prepara a mesma coisa duas vezes.
 function enviarCozinhaMesa(data, alvo, rotulo) {
   const d = garantirDia(data);
   const itens = d.mesas[alvo] || [];
-  if (!itens.length) throw new Error("comanda vazia");
+  const novos = itens.filter((it) => !it._enviado);
+  if (!novos.length) throw new Error("nada novo pra enviar pra cozinha");
   d._seqMesaCoz = (d._seqMesaCoz || 0) + 1;
   const ticket = {
     id: "M-" + String(10 + d._seqMesaCoz),
     alvo: rotulo || alvo,
-    itens: JSON.parse(JSON.stringify(itens)), // foto do momento (não muda se a comanda mudar depois)
+    itens: novos.map((it) => { const c = { ...it }; delete c._enviado; return c; }), // só os novos
     hora: hhmm(),
     cozinha: "preparo",
   };
   d.ticketsMesa.push(ticket);
+  novos.forEach((it) => (it._enviado = true)); // marca como já enviados
   salvar();
   return ticket;
 }
