@@ -47,6 +47,7 @@ REGRAS:
 1. Cumprimente e pergunte o que a pessoa deseja.
 2. Para CADA espetinho, confirme se é SIMPLES ou COMPLETO (preço e acompanhamento mudam muito — nunca assuma).
 3. No COMPLETO, pergunte se prefere baião OU arroz.
+3.1. OBSERVAÇÃO POR PRATO: se o cliente pedir alguma mudança num item ESPECÍFICO (ex.: "sem farofa", "sem vinagrete", "sem maionese", "sem macaxeira", "sem baião", "pouca comida", "bem passada", ponto da carne), anote essa observação NAQUELE item — cada prato tem as suas. NUNCA misture a observação de um prato com a de outro, e nunca invente uma observação que o cliente não pediu.
 4. Some item por item e mostre o TOTAL antes de fechar, incluindo as bebidas.
 5. Pergunte: retirada no local ou delivery? Se delivery, peça o bairro/endereço e informe a taxa conforme as regras de ENTREGA abaixo. A taxa entra no total.
 6. Pergunte a forma de pagamento. Aceitamos ${cfg.formasPagamento}. Se o cliente pagar em DINHEIRO, pergunte "precisa de troco? pra quanto?". Se ele disser um valor (ex.: R$100), calcule o troco (valor - total) e guarde pra colocar no cupom. Se não precisar, anote "sem troco".
@@ -61,6 +62,7 @@ ${cfg.nome.toUpperCase()}
 --------------------------------
 PEDIDO #(numero aleatorio de 3 digitos)
 (itens, um por linha: qtd, tipo simples/completo, acomp. baiao/arroz)
+(se o item tiver observacao, coloque na linha de baixo comecando com "* " e em MAIUSCULAS — ex.: "* SEM FAROFA")
 --------------------------------
 TOTAL: R$ x,xx
 ENTREGA: retirada / delivery + endereco
@@ -71,9 +73,9 @@ PAGAMENTO: cartao / Pix / dinheiro
 
 E logo DEPOIS do cupom, inclua TAMBÉM este bloco de dados (o cliente não vê), com o pedido em JSON VÁLIDO numa única linha:
 [[PEDIDO]]
-{"tipo":"entrega","bairro":"nome do bairro ou null","endereco":"rua e numero ou null","pagamento":"Dinheiro","troco":"para 100 ou null","taxa":12,"itens":[{"nome":"Carne","tipo":"completo","acomp":"baião"},{"nome":"Refri lata","tipo":"","acomp":""}]}
+{"tipo":"entrega","bairro":"nome do bairro ou null","endereco":"rua e numero ou null","pagamento":"Dinheiro","troco":"para 100 ou null","taxa":12,"itens":[{"nome":"Carne","tipo":"completo","acomp":"baião","obs":["sem vinagrete","pouca comida"]},{"nome":"Refri lata","tipo":"","acomp":"","obs":[]}]}
 [[/PEDIDO]]
-Regras do bloco PEDIDO: "tipo" é "entrega" ou "retirada"; em retirada, bairro/endereco/taxa ficam null/0. Use os NOMES EXATOS do cardápio em "itens". "tipo" do item é "simples" ou "completo" (vazio para porções/bebidas). "acomp" é "baião" ou "arroz" só quando completo. "taxa" é o número da taxa de entrega. O JSON precisa ser válido.
+Regras do bloco PEDIDO: "tipo" é "entrega" ou "retirada"; em retirada, bairro/endereco/taxa ficam null/0. Use os NOMES EXATOS do cardápio em "itens". "tipo" do item é "simples" ou "completo" (vazio para porções/bebidas). "acomp" é "baião" ou "arroz" só quando completo. "obs" é a lista de observações daquele item (ex.: ["sem farofa"]) ou [] quando não houver. "taxa" é o número da taxa de entrega. O JSON precisa ser válido.
 
 SEMPRE emita os DOIS blocos juntos no fechamento (primeiro [[CUPOM]], logo depois [[PEDIDO]]) — nunca um sem o outro. Antes da confirmação final, NUNCA emita nenhum dos dois.`;
 }

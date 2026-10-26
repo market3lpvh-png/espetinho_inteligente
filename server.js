@@ -80,8 +80,8 @@ app.get("/api/estado", exigir("dono", "atendente", "motoboy"), (req, res) => {
 app.post("/api/mesa/item", exigir("dono", "atendente"), (req, res) => {
   try {
     const data = dataPedido(req);
-    const { alvo, key, tipo, acomp } = req.body || {};
-    bd.addItemMesa(data, alvo, key, tipo, acomp);
+    const { alvo, key, tipo, acomp, obs } = req.body || {};
+    bd.addItemMesa(data, alvo, key, tipo, acomp, obs);
     responderEstado(res, data);
   } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
@@ -92,6 +92,16 @@ app.post("/api/mesa/remove", exigir("dono", "atendente"), (req, res) => {
     const data = dataPedido(req);
     const { alvo, idx } = req.body || {};
     bd.removeItemMesa(data, alvo, Number(idx));
+    responderEstado(res, data);
+  } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
+});
+
+// Observação de um item da comanda (ex.: sem farofa, pouca comida)
+app.post("/api/mesa/obs", exigir("dono", "atendente"), (req, res) => {
+  try {
+    const data = dataPedido(req);
+    const { alvo, idx, obs } = req.body || {};
+    bd.setObsItemMesa(data, alvo, Number(idx), obs);
     responderEstado(res, data);
   } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });
@@ -133,6 +143,16 @@ app.post("/api/pedido/status", exigir("dono", "atendente", "motoboy"), (req, res
     const data = dataPedido(req);
     const { id, status } = req.body || {};
     bd.setStatusPedido(data, id, status);
+    responderEstado(res, data);
+  } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
+});
+
+// Cozinha marca o pedido como "pronto" (some do quadro da cozinha)
+app.post("/api/pedido/cozinha", exigir("dono", "atendente"), (req, res) => {
+  try {
+    const data = dataPedido(req);
+    const { id, estado } = req.body || {};
+    bd.setCozinhaPedido(data, id, estado);
     responderEstado(res, data);
   } catch (e) { res.status(400).json({ erro: String(e.message || e) }); }
 });

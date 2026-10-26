@@ -151,7 +151,7 @@ function estadoDoDia(data) {
     producao: { ...d.producao },
     mesas: JSON.parse(JSON.stringify(d.mesas)),
     vendas: d.vendas.map((v) => ({ id: v.id, alvo: v.alvo, itens: v.itens, total: v.total, pag: v.pag, hora: v.hora })),
-    pedidosZap: d.pedidosZap.map((p) => ({ id: p.id, tipo: p.tipo, bairro: p.bairro, end: p.end, pag: p.pag, troco: p.troco || null, itens: p.itens, taxa: p.taxa, status: p.status, hora: p.hora })),
+    pedidosZap: d.pedidosZap.map((p) => ({ id: p.id, tipo: p.tipo, bairro: p.bairro, end: p.end, pag: p.pag, troco: p.troco || null, itens: p.itens, taxa: p.taxa, status: p.status, cozinha: p.cozinha || "preparo", hora: p.hora })),
     vendidos: vendidos(data),
     menu: menu(),
   };
@@ -175,7 +175,14 @@ function esgotado(data, key) {
   return (d.producao[key] || 0) > 0 && restante(data, key) <= 0;
 }
 
-function addItemMesa(data, alvo, key, tipo, acomp) {
+// Normaliza observações (ex.: "sem farofa", "pouca comida") para uma lista limpa.
+// Aceita lista ou texto ("sem farofa, pouca comida"); tira vazios, limita tamanho.
+function limparObs(obs) {
+  let arr = Array.isArray(obs) ? obs : (obs ? String(obs).split(/[;,]/) : []);
+  return arr.map((o) => String(o).trim()).filter(Boolean).slice(0, 6).map((o) => o.slice(0, 40));
+}
+
+function addItemMesa(data, alvo, key, tipo, acomp, obs) {
   const d = garantirDia(data);
   if (!itemByKey(key)) throw new Error("item inexistente");
   if (!alvo) throw new Error("mesa inválida");
@@ -184,9 +191,21 @@ function addItemMesa(data, alvo, key, tipo, acomp) {
   const t = temTipo(key) ? (tipo === "c" ? "c" : "s") : null;
   const item = { key, tipo: t };
   if (t === "c" && acomp) item.acomp = String(acomp); // baião ou arroz (só no completo)
+  const ob = limparObs(obs);
+  if (ob.length) item.obs = ob; // observações do prato (ex.: sem farofa, pouca comida)
   d.mesas[alvo].push(item);
   salvar();
   return d.mesas[alvo];
+}
+// Define/atualiza as observações de um item já lançado na comanda (por posição).
+function setObsItemMesa(data, alvo, idx, obs) {
+  const d = garantirDia(data);
+  const itens = d.mesas[alvo] || [];
+  if (!(idx >= 0 && idx < itens.length)) throw new Error("item inexistente na comanda");
+  const ob = limparObs(obs);
+  if (ob.length) itens[idx].obs = ob; else delete itens[idx].obs;
+  salvar();
+  return itens[idx];
 }
 function removeItemMesa(data, alvo, idx) {
   const d = garantirDia(data);
@@ -243,6 +262,8 @@ function addPedidoZap(data, pedido) {
     const t = found.u != null ? null : (String(it.tipo || "").toLowerCase().startsWith("compl") || it.tipo === "c" ? "c" : "s");
     const o = { key: found.key, tipo: t };
     if (t === "c" && it.acomp) o.acomp = String(it.acomp);
+    const ob = limparObs(it.obs);
+    if (ob.length) o.obs = ob;
     return o;
   }).filter(Boolean);
   if (!itens.length) throw new Error("pedido sem itens válidos");
@@ -258,6 +279,7 @@ function addPedidoZap(data, pedido) {
     itens,
     taxa: tipo === "entrega" ? (Number(pedido.taxa) || 0) : 0,
     status: "preparo",
+    cozinha: "preparo", // estado na COZINHA: "preparo" (na fila) ou "pronto" (saiu do quadro)
     hora: hhmm(),
   };
   d.pedidosZap.push(ped);
@@ -270,6 +292,15 @@ function setStatusPedido(data, id, status) {
   const p = d.pedidosZap.find((x) => x.id === id);
   if (!p) throw new Error("pedido não encontrado");
   p.status = status;
+  salvar();
+  return p;
+}
+// Marca o pedido como PRONTO na cozinha (some do quadro) ou devolve pra fila.
+function setCozinhaPedido(data, id, estadoCozinha) {
+  const d = garantirDia(data);
+  const p = d.pedidosZap.find((x) => x.id === id);
+  if (!p) throw new Error("pedido não encontrado");
+  p.cozinha = estadoCozinha === "pronto" ? "pronto" : "preparo";
   salvar();
   return p;
 }
@@ -300,7 +331,7 @@ module.exports = {
   preco, temTipo, somaItens, menu, cardapioTexto,
   salvarItemMenu, removerItemMenu,
   hojeData, estadoDoDia, vendidos, restante, esgotado,
-  addItemMesa, removeItemMesa, fecharMesa, setProducao, abrirCaixa, fecharCaixa,
-  addPedidoZap, setStatusPedido,
+  addItemMesa, removeItemMesa, setObsItemMesa, fecharMesa, setProducao, abrirCaixa, fecharCaixa,
+  addPedidoZap, setStatusPedido, setCozinhaPedido,
   garantirDia, historico,
 };
