@@ -179,6 +179,8 @@
   .tkt .th .id{font-family:var(--f-mono);font-weight:600;font-size:13px}
   .tkt .th .tag{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:999px}
   .tkt .th .tag.ret{background:rgba(236,122,44,.16);color:var(--ember-soft)} .tkt .th .tag.ent{background:rgba(224,165,58,.18);color:var(--warn)}
+  .tkt .th .tag.mesa{background:rgba(91,191,134,.16);color:var(--ok)}
+  .tkt.mesa{border-color:rgba(91,191,134,.4)}
   .tkt .ti{padding:9px 10px;display:flex;flex-direction:column;gap:8px;flex:1}
   .tkt .it{border-bottom:1px dashed var(--line);padding-bottom:7px} .tkt .it:last-of-type{border-bottom:none;padding-bottom:0}
   .tkt .it .q{font-family:var(--f-display);font-size:15px;letter-spacing:.3px} .tkt .it .subl{font-size:11px;color:var(--muted);margin-top:1px}
@@ -351,7 +353,7 @@
 /* ================= ESTADO LOCAL (espelho do servidor) ================= */
 let estado=null, hist=null, MAPA={}, CATS=[];
 let papel=null, token=null, rainOn=false, abaAtiva="mesas", mesaView="grid", alvoAtivo=null;
-let confirmaVenda=null, ocupado=false, acompPara=null, obsEditIdx=null;
+let confirmaVenda=null, ocupado=false, acompPara=null, obsEditIdx=null, avisoCozinha=null;
 const NUM_MESAS=12;
 const OBS_TAGS=["sem farofa","sem baião","sem arroz","sem vinagrete","sem maionese","sem macaxeira","pouca comida","bem passada"];
 
@@ -688,13 +690,18 @@ function renderEntregas(){
 /* ---- COZINHA (quadro de pedidos a preparar) ---- */
 function renderCozinha(){
   const cont=document.getElementById("cozinhaConteudo");
-  const fila=estado.pedidosZap.filter(p=>(p.cozinha||"preparo")==="preparo");
+  // junta pedidos do WhatsApp (W-) e comandas enviadas das mesas (M-), só os que faltam preparar
+  const fila=[
+    ...estado.pedidosZap.filter(p=>(p.cozinha||"preparo")==="preparo").map(p=>({...p,_fonte:"zap"})),
+    ...(estado.ticketsMesa||[]).filter(t=>(t.cozinha||"preparo")==="preparo").map(t=>({...t,_fonte:"mesa"})),
+  ].sort((a,b)=>String(a.hora).localeCompare(String(b.hora)));
   if(!fila.length){
-    cont.innerHTML=`<div class="vazio">Nenhum pedido na fila agora.<br>Os pedidos do WhatsApp caem aqui pra preparar.</div>`;
+    cont.innerHTML=`<div class="vazio">Nenhum pedido na fila agora.<br>Os pedidos do WhatsApp e as comandas enviadas das mesas caem aqui.</div>`;
     return;
   }
   cont.innerHTML=`<div class="kds">`+fila.map(p=>{
-    const tag=p.tipo==="entrega"?`<span class="tag ent">Entrega</span>`:`<span class="tag ret">Retirada</span>`;
+    const tag=p._fonte==="mesa"?`<span class="tag mesa">${p.alvo}</span>`
+      :(p.tipo==="entrega"?`<span class="tag ent">Entrega</span>`:`<span class="tag ret">Retirada</span>`);
     // agrupa itens iguais (mesmo item + tipo + acomp + observações)
     const grupos={};
     p.itens.forEach(it=>{const k=it.key+"|"+(it.tipo||"")+"|"+(it.acomp||"")+"|"+((it.obs||[]).join(","));if(!grupos[k])grupos[k]={it,q:0};grupos[k].q++;});
@@ -705,8 +712,9 @@ function renderCozinha(){
       const chips=(it.obs||[]).map(o=>`<span class="obschip">${o}</span>`).join("");
       return `<div class="it"><div class="q">${g.q}× ${nome}</div>${sub.length?`<div class="subl">${sub.join(" · ")}</div>`:""}${chips}</div>`;
     }).join("");
-    return `<div class="tkt ${p.tipo==="entrega"?"ent":""}"><div class="th"><span class="id">${p.id}</span>${tag}</div>
-      <div class="ti">${itensHtml}<span class="hr">${p.hora}${p.bairro?" · "+p.bairro:""}</span></div>
+    const rodape=p._fonte==="mesa"?p.hora:(p.hora+(p.bairro?" · "+p.bairro:""));
+    return `<div class="tkt ${p._fonte==="mesa"?"mesa":(p.tipo==="entrega"?"ent":"")}"><div class="th"><span class="id">${p.id}</span>${tag}</div>
+      <div class="ti">${itensHtml}<span class="hr">${rodape}</span></div>
       <button class="pronto" data-pronto="${p.id}">Pronto ✓</button></div>`;
   }).join("")+`</div>`;
   cont.querySelectorAll(".pronto").forEach(b=>b.addEventListener("click",()=>acao("/api/pedido/cozinha",{id:b.dataset.pronto,estado:"pronto"})));
